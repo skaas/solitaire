@@ -31,6 +31,7 @@ const Card = ({ card, isDraggable = false, isFromQueue = false }: CardProps) => 
       } ${
         isAnimating ? 'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75' : ''
       }`}
+      style={{ touchAction: 'none' }} // 스크롤 방지
       draggable={isDraggable && isFromQueue}
       onDragStart={handleDragStart}
     >

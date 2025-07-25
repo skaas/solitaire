@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useGameStore } from '../state/GameState';
 import Column from './Column';
 import Card from './Card';
@@ -8,6 +9,14 @@ const GameBoard = () => {
     undoCount, trashCount, isGameOver, 
     resetGame, undo, trashCard 
   } = useGameStore();
+
+  useEffect(() => {
+    // GameBoard가 마운트될 때 body 스크롤을 막고, 언마운트될 때 복원
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
