@@ -84,7 +84,6 @@ const Column = ({ column }: ColumnProps) => {
             <Card
               card={card}
               isDraggable={false} // 컬럼의 카드는 더 이상 드래그 불가능
-              columnId={column.id}
             />
           </div>
         );

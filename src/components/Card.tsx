@@ -4,11 +4,10 @@ import { useGameStore } from '../state/GameState';
 interface CardProps {
   card: CardType;
   isDraggable?: boolean;
-  columnId: number;
   isFromQueue?: boolean;
 }
 
-const Card = ({ card, isDraggable = false, columnId, isFromQueue = false }: CardProps) => {
+const Card = ({ card, isDraggable = false, isFromQueue = false }: CardProps) => {
   const animatingCards = useGameStore((state) => state.animatingCards);
   const isAnimating = animatingCards.includes(card.id);
 

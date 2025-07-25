@@ -96,7 +96,6 @@ const GameBoard = () => {
                           <Card 
                             card={card}
                             isDraggable={index === queue.length - 1} // 마지막(오른쪽) 카드만 드래그 가능
-                            columnId={-1} // 큐는 -1로 구분
                             isFromQueue={true}
                           />
                       </div>
