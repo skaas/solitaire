@@ -1,0 +1,38 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-gray-400',
+    'bg-red-500',
+    'bg-pink-500',
+    'bg-yellow-500',
+    'bg-blue-500',
+    'bg-indigo-500',
+    'bg-violet-500',
+    'bg-gray-600',
+    'animate-pulse',
+    'scale-110',
+    'ring-4',
+    'ring-yellow-400',
+    'ring-opacity-75',
+    'border-green-400',
+    'bg-green-50',
+    'bg-green-50/10',
+    'border-red-400',
+    'bg-red-50',
+    'bg-red-50/10',
+    'border-gray-300',
+    'border-transparent',
+    'hover:border-white/30',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+} 
