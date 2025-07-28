@@ -1,3 +1,4 @@
+import { useDraggable } from '@dnd-kit/core';
 import type { Card as CardType } from '../types';
 import { useGameStore } from '../state/GameState';
 
@@ -11,29 +12,29 @@ const Card = ({ card, isDraggable = false, isFromQueue = false }: CardProps) => 
   const animatingCards = useGameStore((state) => state.animatingCards);
   const isAnimating = animatingCards.includes(card.id);
 
-  const handleDragStart = (e: React.DragEvent) => {
-    // 컬럼에 있는 카드는 드래그 불가능 (큐에서만 가능)
-    if (!isDraggable || !isFromQueue) {
-      e.preventDefault();
-      return;
-    }
-    
-    // 큐에서 오는 카드만 드래그 데이터 설정
-    const dragData = { fromQueue: true };
-    e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: isDraggable ? 'draggable-card' : card.id,
+    disabled: !isDraggable,
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 100,
+      }
+    : undefined;
 
   return (
     <div
-      className={`w-full aspect-[5/7] ${card.color} rounded-lg flex items-start justify-start p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-300 ${
+      ref={setNodeRef}
+      style={{ ...style, touchAction: 'none' }}
+      {...listeners}
+      {...attributes}
+      className={`w-full aspect-[5/7] ${card.color} rounded-lg flex items-start justify-start p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-0 ${
         isDraggable && isFromQueue ? 'cursor-grab active:cursor-grabbing hover:scale-105' : 'cursor-default'
       } ${
         isAnimating ? 'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75' : ''
       }`}
-      style={{ touchAction: 'none' }} // 스크롤 방지
-      draggable={isDraggable && isFromQueue}
-      onDragStart={handleDragStart}
     >
       {card.value}
     </div>
