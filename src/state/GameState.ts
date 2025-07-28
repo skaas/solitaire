@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Card, Column } from '../types';
-import { processChainMerge, createFiniteDeck, shuffleDeck, canPlaceCard, processAllMerges, getColorForValue } from '../logic/GameLogic';
+import { processChainMerge, createFiniteDeck, shuffleDeck, processAllMerges, getColorForValue } from '../logic/GameLogic';
 
 // GameState의 스냅샷 타입
 type GameStateSnapshot = {
