@@ -149,11 +149,6 @@ const GameBoard = () => {
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
               <div className="bg-[#3A166A] p-6 rounded-lg text-center">
                 <h2 className="text-2xl font-bold text-red-400 mb-4">GAME OVER</h2>
-                {deck.length === 0 && queue.length === 0 ? (
-                  <p className="text-white mb-4">덱의 모든 카드를 사용했습니다!</p>
-                ) : (
-                  <p className="text-white mb-4">한 줄에 8장 이상 쌓였습니다!</p>
-                )}
                 <p className="text-yellow-400 mb-6">최종 점수: {score.toLocaleString()}</p>
                 <button 
                   onClick={resetGame}

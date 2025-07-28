@@ -201,14 +201,32 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   checkGameOver: () => {
-    const { columns, deck, queue } = get();
+    const { columns, deck, queue, trashCount, canPlaceCard } = get();
+    
+    // 기존 조건 1: 8장 이상 쌓인 컬럼이 있을 때
     if (columns.some(col => col.cards.length >= 8)) {
       return true;
     }
-    // 덱과 큐가 모두 비었을 때 게임 오버 조건 추가
+    
+    // 기존 조건 2: 덱과 큐가 모두 비었을 때
     if (deck.length === 0 && queue.length === 0) {
       return true;
     }
+
+    // 새로운 조건 추가
+    if (queue.length > 0) {
+     const cardToMove = queue[queue.length - 1];
+     const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
+
+     // 조건 1: 현재 카드를 놓을 곳이 없고,
+     if (noValidMoves) {
+       // 조건 2: 휴지통도 더 쓸 수 없을 때 (교착 상태)
+       if (trashCount === 0) {
+         return true;
+       }
+     }
+   }
+
     return false;
   },
 
