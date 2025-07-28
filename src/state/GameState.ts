@@ -23,6 +23,7 @@ interface GameState {
   isAnimating: boolean;
   animatingCards: number[];
   isGameOver: boolean;
+  canPlaceCard: (card: Card, column: Column) => boolean;
   setColumns: (columns: Column[]) => void;
   setQueue: (queue: Card[]) => void;
   moveCardFromQueue: (toColumnId: number) => void;
@@ -95,6 +96,14 @@ const initializeGame = () => {
 
 export const useGameStore = create<GameState>((set, get) => ({
   ...initializeGame(),
+
+  canPlaceCard: (card: Card, column: Column): boolean => {
+    if (column.cards.length === 0) {
+      return true;
+    }
+    const topCard = column.cards[column.cards.length - 1];
+    return card.value <= topCard.value;
+  },
 
   setColumns: (columns) => set({ columns }),
   setQueue: (queue) => set({ queue }),

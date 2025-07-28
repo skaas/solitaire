@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import {
-  DndContext,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
+import React, { useEffect } from 'react';
 import { useGameStore } from '../state/GameState';
 import Column from './Column';
 import Card from './Card';
+import { DndContainer } from './dnd/DndContainer';
+import type { DragEndEvent } from '@dnd-kit/core';
 
 const GameBoard = () => {
   const { 
@@ -19,11 +13,6 @@ const GameBoard = () => {
     moveCardFromQueue,
   } = useGameStore();
 
-  const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor)
-  );
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -32,18 +21,17 @@ const GameBoard = () => {
       const cardToMove = queue[queue.length - 1];
       const targetColumn = columns.find(c => c.id === columnId);
 
-      if (cardToMove && targetColumn) {
+      if (cardToMove && targetColumn && useGameStore.getState().canPlaceCard(cardToMove, targetColumn)) {
         moveCardFromQueue(columnId);
       }
     }
   };
-
+  
   useEffect(() => {
-    // GameBoard가 마운트될 때 body 스크롤을 막고, 언마운트될 때 복원
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
+    const timer = setInterval(() => {
+      useGameStore.setState((state) => ({ time: state.time + 1 }));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const formatTime = (seconds: number) => {
@@ -53,7 +41,7 @@ const GameBoard = () => {
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContainer onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         {/* 9:16 비율 고정 게임 보드 */}
         <div className="w-full max-w-md h-screen max-h-screen aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
@@ -178,7 +166,7 @@ const GameBoard = () => {
           )}
         </div>
       </div>
-    </DndContext>
+    </DndContainer>
   );
 };
 

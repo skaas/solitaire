@@ -1,8 +1,8 @@
-import { useDroppable } from '@dnd-kit/core';
 import type { Column as ColumnType } from '../types';
 import Card from './Card';
 import { useGameStore } from '../state/GameState';
 import { canPlaceCard } from '../logic/GameLogic';
+import { Droppable } from './dnd/Droppable';
 
 interface ColumnProps {
   column: ColumnType;
@@ -10,32 +10,29 @@ interface ColumnProps {
 
 const Column = ({ column }: ColumnProps) => {
   const { queue } = useGameStore();
-  const { isOver, setNodeRef } = useDroppable({
-    id: `column-${column.id}`,
-  });
 
-  const cardToMove = queue[queue.length - 1];
-  const isValidDrop = isOver && cardToMove && canPlaceCard(cardToMove, column);
+  const cardToMove = queue.length > 0 ? queue[queue.length - 1] : null;
 
-  const getDropZoneStyle = () => {
-    const baseStyle = 'w-full h-full relative rounded-lg transition-all duration-200';
-    if (isOver) {
-      if(isValidDrop) {
-        return `${baseStyle} border-2 border-green-400 bg-green-50/10`;
+  const columnContent = (isOver: boolean, ref: any) => {
+    const isValidDrop = isOver && cardToMove && canPlaceCard(cardToMove, column);
+    
+    const getDropZoneStyle = () => {
+      const baseStyle = 'w-full h-full relative rounded-lg transition-all duration-200';
+      if (isOver) {
+        return isValidDrop
+          ? `${baseStyle} border-2 border-green-400 bg-green-50/10`
+          : `${baseStyle} border-2 border-red-400 bg-red-50/10`;
       }
-      return `${baseStyle} border-2 border-red-400 bg-red-50/10`;
-    }
-    return `${baseStyle} border border-transparent hover:border-white/30`;
-  };
+      return `${baseStyle} border border-transparent hover:border-white/30`;
+    };
 
-  return (
-    <div
-      ref={setNodeRef}
-      className={getDropZoneStyle()}
-      style={{ minHeight: '400px' }} // 충분한 높이 확보
-    >
-      {column.cards.map((card, index) => {
-        return (
+    return (
+      <div
+        ref={ref}
+        className={getDropZoneStyle()}
+        style={{ minHeight: '400px' }}
+      >
+        {column.cards.map((card, index) => (
           <div
             key={card.id}
             className="absolute w-full"
@@ -43,12 +40,19 @@ const Column = ({ column }: ColumnProps) => {
           >
             <Card
               card={card}
-              isDraggable={false} // 컬럼의 카드는 더 이상 드래그 불가능
+              isDraggable={false}
+              isFromQueue={false}
             />
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <Droppable id={`column-${column.id}`}>
+      {(isOver, ref) => columnContent(isOver, ref)}
+    </Droppable>
   );
 };
 
