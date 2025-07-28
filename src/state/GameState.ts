@@ -23,6 +23,8 @@ interface GameState {
   isAnimating: boolean;
   animatingCards: number[];
   isGameOver: boolean;
+  gameOverTriggerColumnId: number | null;
+  gameOverReason: 'overflow' | 'deadlock' | 'deckEmpty' | null;
   canPlaceCard: (card: Card, column: Column) => boolean;
   setColumns: (columns: Column[]) => void;
   setQueue: (queue: Card[]) => void;
@@ -91,6 +93,8 @@ const initializeGame = () => {
     isAnimating: false,
     animatingCards: [],
     isGameOver: false,
+    gameOverTriggerColumnId: null,
+    gameOverReason: null,
   };
 };
 
@@ -111,29 +115,25 @@ export const useGameStore = create<GameState>((set, get) => ({
   // moveCard는 더 이상 사용하지 않음
   moveCard: () => {},
 
-  moveCardFromQueue: (toColumnId) => {
+  moveCardFromQueue: (toColumnId: number) => {
     const state = get();
     if (state.isAnimating || state.isGameOver) return;
     if (state.queue.length === 0) return;
 
     const toColumn = state.columns.find(col => col.id === toColumnId);
-    const cardToMove = state.queue[state.queue.length - 1]; // 오른쪽 카드
+    const cardToMove = state.queue[state.queue.length - 1];
 
     if (toColumn && cardToMove) {
-      if (!canPlaceCard(cardToMove, toColumn) || toColumn.cards.length >= 8) {
-        if (toColumn.cards.length >= 8) {
-          set({ isGameOver: true });
-        }
+      if (!get().canPlaceCard(cardToMove, toColumn)) {
+        // 이곳에 유효하지 않은 이동에 대한 시각적 피드백(예: 카드 흔들기)을 추가할 수 있습니다.
         return;
       }
       
       const newQueue = state.queue.slice(0, -1);
       const newDeck = [...state.deck];
-
-      // 덱에서 카드 하나 뽑아 큐에 추가
       const nextCard = newDeck.pop();
       if (nextCard) {
-        newQueue.unshift(nextCard); // 왼쪽에 추가
+        newQueue.unshift(nextCard);
       }
 
       const newColumns = state.columns.map(col =>
@@ -142,7 +142,6 @@ export const useGameStore = create<GameState>((set, get) => ({
           : col
       );
       
-      // 상태 변경 전, 현재 상태를 history에 저장
       const currentState = get();
       const newHistory = [
         {
@@ -152,20 +151,17 @@ export const useGameStore = create<GameState>((set, get) => ({
           score: currentState.score,
         },
         ...currentState.history,
-      ].slice(0, 2); // 최대 2개까지 저장
+      ].slice(0, 2);
 
       set({
         columns: newColumns,
         queue: newQueue,
         deck: newDeck,
-        history: newHistory, // history 업데이트
+        history: newHistory,
       });
 
-      if (get().checkGameOver()) {
-        set({ isGameOver: true });
-      } else {
-        setTimeout(() => get().processMergeWithAnimation(toColumnId), 100);
-      }
+      // 병합 프로세스를 시작합니다. 게임 오버 체크는 병합이 모두 끝난 후에 이루어집니다.
+      setTimeout(() => get().processMergeWithAnimation(toColumnId), 100);
     }
   },
 
@@ -175,21 +171,24 @@ export const useGameStore = create<GameState>((set, get) => ({
       const lastState = history[0];
       set({
         ...lastState,
-        history: history.slice(1), // 사용한 history 제거
+        history: history.slice(1),
         undoCount: undoCount - 1,
       });
+      if (get().checkGameOver()) {
+        set({ isGameOver: true });
+      }
     }
   },
 
   trashCard: () => {
     const { queue, deck, trashCount } = get();
     if (trashCount > 0 && queue.length > 0) {
-      const newQueue = queue.slice(0, -1); // 맨 오른쪽 카드 제거
+      const newQueue = queue.slice(0, -1);
       const newDeck = [...deck];
 
       const nextCard = newDeck.pop();
       if (nextCard) {
-        newQueue.unshift(nextCard); // 왼쪽에 새 카드 추가
+        newQueue.unshift(nextCard);
       }
 
       set({
@@ -197,35 +196,37 @@ export const useGameStore = create<GameState>((set, get) => ({
         deck: newDeck,
         trashCount: trashCount - 1,
       });
+      if (get().checkGameOver()) {
+        set({ isGameOver: true });
+      }
     }
   },
 
   checkGameOver: () => {
     const { columns, deck, queue, trashCount, canPlaceCard } = get();
     
-    // 기존 조건 1: 8장 이상 쌓인 컬럼이 있을 때
-    if (columns.some(col => col.cards.length >= 8)) {
+    // 조건 1: 8장 이상 쌓인 컬럼
+    const overflowingColumn = columns.find(col => col.cards.length >= 8);
+    if (overflowingColumn) {
+      set({ gameOverTriggerColumnId: overflowingColumn.id, gameOverReason: 'overflow' });
       return true;
     }
     
-    // 기존 조건 2: 덱과 큐가 모두 비었을 때
+    // 조건 2: 덱과 큐가 모두 비었을 때
     if (deck.length === 0 && queue.length === 0) {
+      set({ gameOverReason: 'deckEmpty' });
       return true;
     }
 
-    // 새로운 조건 추가
+    // 조건 3: 교착 상태
     if (queue.length > 0) {
-     const cardToMove = queue[queue.length - 1];
-     const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
-
-     // 조건 1: 현재 카드를 놓을 곳이 없고,
-     if (noValidMoves) {
-       // 조건 2: 휴지통도 더 쓸 수 없을 때 (교착 상태)
-       if (trashCount === 0) {
-         return true;
-       }
-     }
-   }
+      const cardToMove = queue[queue.length - 1];
+      const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
+      if (noValidMoves && trashCount === 0) {
+        set({ gameOverReason: 'deadlock' });
+        return true;
+      }
+    }
 
     return false;
   },
@@ -238,45 +239,42 @@ export const useGameStore = create<GameState>((set, get) => ({
   addScore: (points) => set((state) => ({ score: state.score + points })),
   setAnimating: (isAnimating) => set({ isAnimating }),
   setAnimatingCards: (cardIds) => set({ animatingCards: cardIds }),
-  processMergeWithAnimation: (columnId: number) => {
+  processMergeWithAnimation: async (columnId: number) => {
     const state = get();
     const column = state.columns.find(col => col.id === columnId);
     if (!column) return;
-    
-    const mergingCardIds: number[] = [];
-    for (let i = 0; i < column.cards.length - 1; i++) {
-      if (column.cards[i].value === column.cards[i + 1].value) {
-        mergingCardIds.push(column.cards[i].id, column.cards[i + 1].id);
-        break; 
+
+    // processChainMerge는 이제 컬럼 자체를 변경하지 않고, 변경될 카드 목록과 점수를 반환합니다.
+    const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards);
+
+    if (scoreGained > 0) {
+      // 애니메이션 시작
+      set({ isAnimating: true });
+      mergedCardIds.forEach((id: number) => get().setAnimatingCards([...get().animatingCards, id]));
+
+      // 애니메이션을 보여줄 시간
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      set(currentState => {
+        const newColumns = currentState.columns.map(c => 
+          c.id === columnId ? { ...c, cards: mergedCards } : c
+        );
+        return { 
+          columns: newColumns,
+          score: currentState.score + scoreGained,
+          isAnimating: false,
+          animatingCards: get().animatingCards.filter((id: number) => !mergedCardIds.includes(id)),
+        };
+      });
+
+      // 변경된 컬럼에 대해 재귀적으로 병합 확인
+      get().processMergeWithAnimation(columnId);
+
+    } else {
+      // 더 이상 병합할 카드가 없으면, 이 시점에서 게임 오버를 최종적으로 체크합니다.
+      if (get().checkGameOver()) {
+        set({ isGameOver: true });
       }
-    }
-    
-    if (mergingCardIds.length > 0) {
-      set({ isAnimating: true, animatingCards: mergingCardIds });
-      
-      setTimeout(() => {
-        const currentState = get();
-        const newColumns = [...currentState.columns];
-        const targetColumn = newColumns.find(col => col.id === columnId);
-        
-        if (targetColumn) {
-          const { mergedColumn, scoreGained } = processChainMerge(targetColumn);
-          const targetColumnIndex = newColumns.findIndex(col => col.id === columnId);
-          newColumns[targetColumnIndex] = mergedColumn;
-          
-          set({ 
-            columns: newColumns,
-            isAnimating: false,
-            animatingCards: []
-          });
-          
-          if (scoreGained > 0) {
-            get().addScore(scoreGained);
-          }
-          
-          setTimeout(() => get().processMergeWithAnimation(columnId), 100);
-        }
-      }, 600);
     }
   },
 }));

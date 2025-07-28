@@ -7,9 +7,19 @@ interface CardProps {
   card: CardType;
   isDraggable?: boolean;
   isFromQueue?: boolean;
+  isGameOverCard?: boolean;
+  isDeadlockQueueCard?: boolean;
+  isDeadlockColumnCard?: boolean;
 }
 
-const Card = ({ card, isDraggable = false, isFromQueue = false }: CardProps) => {
+const Card = ({ 
+  card, 
+  isDraggable = false, 
+  isFromQueue = false, 
+  isGameOverCard = false,
+  isDeadlockQueueCard = false,
+  isDeadlockColumnCard = false,
+}: CardProps) => {
   const animatingCards = useGameStore((state) => state.animatingCards);
   const isAnimating = animatingCards.includes(card.id);
 
@@ -25,6 +35,12 @@ const Card = ({ card, isDraggable = false, isFromQueue = false }: CardProps) => 
         isAnimating ? 'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75' : ''
       } ${
         isDragging ? 'opacity-50' : ''
+      } ${
+        isGameOverCard ? 'animate-shake' : ''
+      } ${
+        isDeadlockQueueCard ? 'scale-110 fill-black-setup animate-fill-black' : ''
+      } ${
+        isDeadlockColumnCard ? 'scale-110 animate-shake' : ''
       }`}
     >
       {card.value}

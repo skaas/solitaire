@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.animate-shake {
+  animation: shake 1.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 검정색 채우기 애니메이션 */
+.fill-black-setup {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.fill-black-setup::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background-color: black;
+  z-index: -1;
+}
+
+.animate-fill-black::after {
+  animation: fill-up 1.5s ease-in-out forwards;
+}
+
+@keyframes fill-up {
+  from {
+    height: 0%;
+  }
+  to {
+    height: 100%;
+  }
+}

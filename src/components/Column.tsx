@@ -9,15 +9,21 @@ interface ColumnProps {
 }
 
 const Column = ({ column }: ColumnProps) => {
-  const { queue } = useGameStore();
+  const { queue, gameOverTriggerColumnId, gameOverReason } = useGameStore();
 
   const cardToMove = queue.length > 0 ? queue[queue.length - 1] : null;
 
   const columnContent = (isOver: boolean, ref: any) => {
     const isValidDrop = isOver && cardToMove && canPlaceCard(cardToMove, column);
-    
+    const isGameOverColumn = gameOverTriggerColumnId === column.id;
+
     const getDropZoneStyle = () => {
       const baseStyle = 'w-full h-full relative rounded-lg transition-all duration-200';
+      
+      if (isGameOverColumn) {
+        return `${baseStyle} border-2 border-red-500 bg-red-500/20 animate-pulse`;
+      }
+      
       if (isOver) {
         return isValidDrop
           ? `${baseStyle} border-2 border-green-400 bg-green-50/10`
@@ -32,19 +38,24 @@ const Column = ({ column }: ColumnProps) => {
         className={getDropZoneStyle()}
         style={{ minHeight: '400px' }}
       >
-        {column.cards.map((card, index) => (
-          <div
-            key={card.id}
-            className="absolute w-full"
-            style={{ top: index * 30 }}
-          >
-            <Card
-              card={card}
-              isDraggable={false}
-              isFromQueue={false}
-            />
-          </div>
-        ))}
+        {column.cards.map((card, index) => {
+          const isTopCard = index === column.cards.length - 1;
+          return (
+            <div
+              key={card.id}
+              className="absolute w-full"
+              style={{ top: index * 30 }}
+            >
+              <Card
+                card={card}
+                isDraggable={false}
+                isFromQueue={false}
+                isGameOverCard={isGameOverColumn}
+                isDeadlockColumnCard={isTopCard && gameOverReason === 'deadlock'}
+              />
+            </div>
+          );
+        })}
       </div>
     );
   };

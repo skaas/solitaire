@@ -90,49 +90,40 @@ export function generateNewCard(maxPower: number = 4): Card {
 }
 
 /**
- * 컬럼에서 체인 병합을 처리하는 함수 (아래서부터 순서대로, 한 번에 하나의 쌍만)
- * @param column - 병합을 처리할 컬럼
+ * 컬럼 내에서 카드 병합을 처리합니다. (연쇄 병합)
+ * @param column 병합을 체크할 컬럼
  * @returns 병합된 컬럼과 획득한 점수
  */
-export function processChainMerge(column: Column): { mergedColumn: Column, scoreGained: number } {
-  if (column.cards.length < 2) {
-    return { mergedColumn: column, scoreGained: 0 };
+export function processChainMerge(cards: Card[]): { mergedCards: Card[], scoreGained: number, mergedCardIds: number[] } {
+  if (cards.length < 2) {
+    return { mergedCards: cards, scoreGained: 0, mergedCardIds: [] };
   }
 
-  let cards = [...column.cards];
-  let totalScore = 0;
-  const newCards: Card[] = [];
-
-  // 아래서부터(인덱스 0부터) 순서대로 처리, 첫 번째 병합 쌍만 처리
-  let i = 0;
-  let foundMerge = false;
+  let newCards = [...cards];
+  let scoreGained = 0;
+  let mergedCardIds: number[] = [];
   
-  while (i < cards.length) {
-    // 현재 위치에서 다음 카드와 값이 같은지 확인하고, 아직 병합을 찾지 않았을 때만
-    if (!foundMerge && i < cards.length - 1 && cards[i].value === cards[i + 1].value) {
-      // 병합: 두 카드를 하나로 합침
-      const newValue = cards[i].value * 2;
-      const newCard: Card = {
-        id: Date.now() + Math.random(), // 임시 ID 생성
-        value: newValue,
-        color: getColorForValue(newValue)
-      };
-      newCards.push(newCard);
-      totalScore += newValue;
-      foundMerge = true;
-      
-      // 두 카드를 처리했으므로 인덱스를 2만큼 증가
-      i += 2;
-    } else {
-      // 병합되지 않는 카드는 그대로 추가
-      newCards.push(cards[i]);
-      i++;
-    }
+  // 맨 위 카드부터(배열의 끝) 역순으로 한 쌍만 체크
+  const lastIndex = newCards.length - 1;
+  if (newCards[lastIndex].value === newCards[lastIndex - 1].value) {
+    const mergedValue = newCards[lastIndex].value * 2;
+    scoreGained += mergedValue;
+    
+    mergedCardIds.push(newCards[lastIndex].id, newCards[lastIndex - 1].id);
+
+    const newCard: Card = {
+      id: Date.now() + Math.random(), // 임시 ID
+      value: mergedValue,
+      color: getColorForValue(mergedValue)
+    };
+    
+    newCards = [...newCards.slice(0, lastIndex - 1), newCard];
   }
 
   return {
-    mergedColumn: { ...column, cards: newCards },
-    scoreGained: totalScore
+    mergedCards: newCards,
+    scoreGained,
+    mergedCardIds,
   };
 }
 

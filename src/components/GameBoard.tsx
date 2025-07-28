@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../state/GameState';
 import Column from './Column';
 import Card from './Card';
@@ -8,10 +8,13 @@ import type { DragEndEvent } from '@dnd-kit/core';
 const GameBoard = () => {
   const { 
     score, time, columns, queue, deck, 
-    undoCount, trashCount, isGameOver, 
+    undoCount, trashCount, isGameOver, gameOverReason,
     resetGame, undo, trashCard,
     moveCardFromQueue,
   } = useGameStore();
+
+  const [showGameOverPopup, setShowGameOverPopup] = useState(false);
+  const [animationFinished, setAnimationFinished] = useState(false);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -34,6 +37,24 @@ const GameBoard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (isGameOver) {
+      const timer = setTimeout(() => {
+        setAnimationFinished(true);
+      }, 1500); // 1.5초 후 애니메이션 종료 상태로 변경
+      return () => clearTimeout(timer);
+    } else {
+      setAnimationFinished(false);
+      setShowGameOverPopup(false);
+    }
+  }, [isGameOver]);
+
+  const handleBoardClick = () => {
+    if (animationFinished && !showGameOverPopup) {
+      setShowGameOverPopup(true);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -42,7 +63,10 @@ const GameBoard = () => {
 
   return (
     <DndContainer onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <div 
+        className="min-h-screen bg-gray-900 flex items-center justify-center p-4"
+        onClick={handleBoardClick}
+      >
         {/* 9:16 비율 고정 게임 보드 */}
         <div className="w-full max-w-md h-screen max-h-screen aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
           {/* Top Bar: Score and Time */}
@@ -105,10 +129,10 @@ const GameBoard = () => {
             {/* Center: Card Queue - 겹치게 배치 */}
             <div className="flex items-center justify-center relative">
                 {queue.map((card, index) => {
-                  // 전체 카드 그룹의 너비 계산: 첫 카드 너비 + (카드 수 - 1) * 겹침 간격
-                  const totalWidth = 80 + (queue.length - 1) * 25; // 카드 너비 80px + 겹침 25px
-                  const startOffset = -totalWidth / 2; // 중앙 기준점에서 왼쪽으로 절반만큼 이동
-                  
+                  const totalWidth = 80 + (queue.length - 1) * 25;
+                  const startOffset = -totalWidth / 2;
+                  const isLastCardInQueue = index === queue.length - 1;
+
                   return (
                      <div 
                        key={card.id} 
@@ -121,8 +145,9 @@ const GameBoard = () => {
                         <div className="w-20">
                             <Card 
                               card={card}
-                              isDraggable={index === queue.length - 1} // 마지막(오른쪽) 카드만 드래그 가능
+                              isDraggable={isLastCardInQueue}
                               isFromQueue={true}
+                              isDeadlockQueueCard={isLastCardInQueue && gameOverReason === 'deadlock'}
                             />
                         </div>
                      </div>
@@ -145,7 +170,7 @@ const GameBoard = () => {
           </div>
 
           {/* Game Over Overlay */}
-          {isGameOver && (
+          {showGameOverPopup && (
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
               <div className="bg-[#3A166A] p-6 rounded-lg text-center">
                 <h2 className="text-2xl font-bold text-red-400 mb-4">GAME OVER</h2>
