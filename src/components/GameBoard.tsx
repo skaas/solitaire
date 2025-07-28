@@ -64,11 +64,11 @@ const GameBoard = () => {
   return (
     <DndContainer onDragEnd={handleDragEnd}>
       <div 
-        className="min-h-screen bg-gray-900 flex items-center justify-center p-4"
+        className="h-dvh bg-gray-900 flex items-center justify-center p-4"
         onClick={handleBoardClick}
       >
         {/* 9:16 비율 고정 게임 보드 */}
-        <div className="w-full max-w-md h-screen max-h-screen aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
+        <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
           {/* Top Bar: Score and Time */}
           <div className="flex justify-between items-center p-4">
             <div className="bg-[#3A166A] p-2 rounded-lg flex items-center">
