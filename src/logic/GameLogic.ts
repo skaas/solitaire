@@ -176,11 +176,12 @@ export function processAllMerges(column: Column): { mergedColumn: Column, scoreG
  */
 export function createFiniteDeck(): Card[] {
   const deckConfig = {
-    '2': 53,
-    '4': 43,
-    '8': 32,
-    '16': 21,
-    '32': 11
+    '2': 46,
+    '4': 42,
+    '8': 30,
+    '16': 24,
+    // '32': 18, // 64 카드 생성 시 잠금 해제
+    // '64': 4  // 64 카드 생성 시 잠금 해제
   };
 
   const deck: Card[] = [];

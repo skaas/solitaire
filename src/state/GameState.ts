@@ -26,6 +26,7 @@ interface GameState {
   gameOverTriggerColumnId: number | null;
   gameOverReason: 'overflow' | 'deadlock' | 'deckEmpty' | null;
   canPlaceCard: (card: Card, column: Column) => boolean;
+  higherTierCardsAdded: boolean; // '32', '64' 카드 추가 여부 추적
   setColumns: (columns: Column[]) => void;
   setQueue: (queue: Card[]) => void;
   moveCardFromQueue: (toColumnId: number) => void;
@@ -37,6 +38,7 @@ interface GameState {
   resetGame: () => void;
   undo: () => void; // 되돌리기
   trashCard: () => void; // 카드 버리기
+  unlockHigherTierCards: () => void;
 }
 
 // 게임 초기화 함수
@@ -95,6 +97,7 @@ const initializeGame = () => {
     isGameOver: false,
     gameOverTriggerColumnId: null,
     gameOverReason: null,
+    higherTierCardsAdded: false,
   };
 };
 
@@ -112,9 +115,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setColumns: (columns) => set({ columns }),
   setQueue: (queue) => set({ queue }),
   
-  // moveCard는 더 이상 사용하지 않음
-  moveCard: () => {},
-
   moveCardFromQueue: (toColumnId: number) => {
     const state = get();
     if (state.isAnimating || state.isGameOver) return;
@@ -125,7 +125,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (toColumn && cardToMove) {
       if (!get().canPlaceCard(cardToMove, toColumn)) {
-        // 이곳에 유효하지 않은 이동에 대한 시각적 피드백(예: 카드 흔들기)을 추가할 수 있습니다.
         return;
       }
       
@@ -160,7 +159,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         history: newHistory,
       });
 
-      // 병합 프로세스를 시작합니다. 게임 오버 체크는 병합이 모두 끝난 후에 이루어집니다.
       setTimeout(() => get().processMergeWithAnimation(toColumnId), 100);
     }
   },
@@ -205,20 +203,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   checkGameOver: () => {
     const { columns, deck, queue, trashCount, canPlaceCard } = get();
     
-    // 조건 1: 8장 이상 쌓인 컬럼
     const overflowingColumn = columns.find(col => col.cards.length >= 8);
     if (overflowingColumn) {
       set({ gameOverTriggerColumnId: overflowingColumn.id, gameOverReason: 'overflow' });
       return true;
     }
     
-    // 조건 2: 덱과 큐가 모두 비었을 때
     if (deck.length === 0 && queue.length === 0) {
       set({ gameOverReason: 'deckEmpty' });
       return true;
     }
 
-    // 조건 3: 교착 상태
     if (queue.length > 0) {
       const cardToMove = queue[queue.length - 1];
       const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
@@ -235,24 +230,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(initializeGame());
   },
 
-  // ... 나머지 함수들 (processMergeWithAnimation, addScore 등)
   addScore: (points) => set((state) => ({ score: state.score + points })),
   setAnimating: (isAnimating) => set({ isAnimating }),
   setAnimatingCards: (cardIds) => set({ animatingCards: cardIds }),
+  
   processMergeWithAnimation: async (columnId: number) => {
     const state = get();
     const column = state.columns.find(col => col.id === columnId);
     if (!column) return;
 
-    // processChainMerge는 이제 컬럼 자체를 변경하지 않고, 변경될 카드 목록과 점수를 반환합니다.
     const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards);
 
     if (scoreGained > 0) {
-      // 애니메이션 시작
       set({ isAnimating: true });
       mergedCardIds.forEach((id: number) => get().setAnimatingCards([...get().animatingCards, id]));
 
-      // 애니메이션을 보여줄 시간
       await new Promise(resolve => setTimeout(resolve, 600));
 
       set(currentState => {
@@ -267,14 +259,47 @@ export const useGameStore = create<GameState>((set, get) => ({
         };
       });
 
-      // 변경된 컬럼에 대해 재귀적으로 병합 확인
       get().processMergeWithAnimation(columnId);
 
     } else {
-      // 더 이상 병합할 카드가 없으면, 이 시점에서 게임 오버를 최종적으로 체크합니다.
+      get().unlockHigherTierCards();
       if (get().checkGameOver()) {
         set({ isGameOver: true });
       }
+    }
+  },
+
+  unlockHigherTierCards: () => {
+    const { columns, deck, higherTierCardsAdded } = get();
+    if (higherTierCardsAdded) return;
+
+    const hasSixtyFourOrMore = columns.some(col => 
+      col.cards.some(card => card.value >= 64)
+    );
+
+    if (hasSixtyFourOrMore) {
+      const newCards: Card[] = [];
+      // '32' 카드 18장 추가
+      for (let i = 0; i < 18; i++) {
+        newCards.push({
+          id: Math.random(),
+          value: 32,
+          color: getColorForValue(32)
+        });
+      }
+      // '64' 카드 4장 추가
+      for (let i = 0; i < 4; i++) {
+        newCards.push({
+          id: Math.random(),
+          value: 64,
+          color: getColorForValue(64)
+        });
+      }
+      
+      const newDeck = shuffleDeck([...deck, ...newCards]);
+      set({ deck: newDeck, higherTierCardsAdded: true });
+      
+      console.log("Congratulations! 32 and 64 cards have been added to the deck!");
     }
   },
 }));
