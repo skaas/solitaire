@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Card, Column } from '../types';
-import { createFiniteDeck, shuffleDeck, processAllMerges, getColorForValue } from '../logic/GameLogic';
+import { createFiniteDeck, shuffleDeck, processAllMerges, createCardWithLuck } from '../logic/GameLogic';
 import type { GameOverEvaluation } from './types';
+import { clearMergeHistory } from '../logic/LuckTracker';
 
 // GameState의 스냅샷 타입
 type GameStateSnapshot = {
@@ -36,10 +37,12 @@ interface GameState {
   setTime(time: number): void;
   incrementTime(): void;
   checkGameOver: () => GameOverEvaluation;
+  unlockHigherTierCards: () => void;
 }
 
 // 게임 초기화 함수
 const initializeGame = () => {
+  clearMergeHistory();
   const newDeck = shuffleDeck(createFiniteDeck());
   let initialScore = 0;
 
@@ -67,9 +70,9 @@ const initializeGame = () => {
 
   // 큐에 '2' 카드 3장 배치
   const initialQueue: Card[] = [
-    { id: Math.random(), value: 2, color: getColorForValue(2) },
-    { id: Math.random(), value: 2, color: getColorForValue(2) },
-    { id: Math.random(), value: 2, color: getColorForValue(2) },
+    createCardWithLuck(2),
+    createCardWithLuck(2),
+    createCardWithLuck(2),
   ];
 
   // 덱에서 '2' 카드 3장 제거
@@ -192,19 +195,11 @@ export const useGameStore = create<GameState>()(
         const newCards: Card[] = [];
         // '32' 카드 18장 추가
         for (let i = 0; i < 18; i++) {
-          newCards.push({
-            id: Math.random(),
-            value: 32,
-            color: getColorForValue(32)
-          });
+          newCards.push(createCardWithLuck(32));
         }
         // '64' 카드 4장 추가
         for (let i = 0; i < 4; i++) {
-          newCards.push({
-            id: Math.random(),
-            value: 64,
-            color: getColorForValue(64)
-          });
+          newCards.push(createCardWithLuck(64));
         }
         
         const newDeck = shuffleDeck([...deck, ...newCards]);
@@ -212,8 +207,6 @@ export const useGameStore = create<GameState>()(
           state.deck = newDeck;
           state.higherTierCardsAdded = true;
         });
-        
-        console.log("Congratulations! 32 and 64 cards have been added to the deck!");
       }
     },
   })),

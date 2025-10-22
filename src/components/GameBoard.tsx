@@ -4,6 +4,7 @@ import { useUIStore } from '../state/UIState';
 import { GameService } from '../logic/GameService';
 import Column from './Column';
 import Card from './Card';
+import FortuneOverlay from './fortune/FortuneOverlay';
 import { DndContainer } from './dnd/DndContainer';
 import type { DragEndEvent } from '@dnd-kit/core';
 
@@ -24,6 +25,7 @@ const GameBoard = () => {
     gameOverReason,
     animationFinished,
     setAnimationFinished,
+    fortuneReport,
   } = useUIStore();
 
   const [showGameOverPopup, setShowGameOverPopup] = useState(false);
@@ -184,19 +186,12 @@ const GameBoard = () => {
           </div>
 
           {/* Game Over Overlay */}
-          {showGameOverOverlay && (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
-              <div className="bg-[#3A166A] p-6 rounded-lg text-center">
-                <h2 className="text-2xl font-bold text-red-400 mb-4">GAME OVER</h2>
-                <p className="text-yellow-400 mb-6">최종 점수: {score.toLocaleString()}</p>
-                <button 
-                  onClick={GameService.resetGame}
-                  className="bg-[#4E1E96] hover:bg-[#5E2EA6] px-6 py-2 rounded-lg font-bold transition-colors"
-                >
-                  다시 시작
-                </button>
-              </div>
-            </div>
+          {showGameOverOverlay && fortuneReport && (
+            <FortuneOverlay
+              score={score}
+              report={fortuneReport}
+              onRestart={GameService.resetGame}
+            />
           )}
         </div>
       </div>

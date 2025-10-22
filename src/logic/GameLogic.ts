@@ -1,4 +1,33 @@
 import type { Card, Column } from '../types';
+import { rollLuckAttributes } from './LuckConfig';
+
+export function createCardWithLuck(
+  value: number,
+  options?: {
+    sourceCards?: Card[];
+    rng?: () => number;
+  },
+): Card {
+  const rng = options?.rng ?? Math.random;
+  const sourceCards = options?.sourceCards ?? [];
+  const referenceCard = sourceCards[sourceCards.length - 1];
+  const { tier, suitId, suitEmoji, suitLabel } = rollLuckAttributes(
+    value,
+    referenceCard?.suitId,
+    referenceCard?.tier,
+    rng,
+  );
+
+  return {
+    id: Date.now() + rng(),
+    value,
+    color: getColorForValue(value),
+    tier,
+    suitId,
+    suitEmoji,
+    suitLabel,
+  };
+}
 
 /**
  * 카드를 특정 컬럼에 놓을 수 있는지 확인하는 함수 (솔리테어 규칙)
@@ -80,13 +109,7 @@ export function generateNewCard(maxPower: number = 4): Card {
   const randomPower = Math.floor(Math.random() * maxPower) + 1;
   const value = Math.pow(2, randomPower);
   
-  const newCard: Card = {
-    id: Date.now() + Math.random(), // 고유 ID 생성
-    value: value,
-    color: getColorForValue(value)
-  };
-  
-  return newCard;
+  return createCardWithLuck(value);
 }
 
 /**
@@ -111,12 +134,8 @@ export function processChainMerge(cards: Card[]): { mergedCards: Card[], scoreGa
     
     mergedCardIds.push(newCards[lastIndex].id, newCards[lastIndex - 1].id);
 
-    const newCard: Card = {
-      id: Date.now() + Math.random(), // 임시 ID
-      value: mergedValue,
-      color: getColorForValue(mergedValue)
-    };
-    
+    const newCard = createCardWithLuck(mergedValue, { sourceCards: [newCards[lastIndex], newCards[lastIndex - 1]] });
+
     newCards = [...newCards.slice(0, lastIndex - 1), newCard];
   }
 
@@ -148,11 +167,8 @@ export function processAllMerges(column: Column): { mergedColumn: Column, scoreG
     while (i < cards.length) {
       if (i < cards.length - 1 && cards[i].value === cards[i + 1].value) {
         const newValue = cards[i].value * 2;
-        newCards.push({
-          id: Date.now() + Math.random(),
-          value: newValue,
-          color: getColorForValue(newValue),
-        });
+        const mergedCard = createCardWithLuck(newValue, { sourceCards: [cards[i], cards[i + 1]] });
+        newCards.push(mergedCard);
         totalScoreGained += newValue;
         hasChangedInLoop = true;
         i += 2;
@@ -189,11 +205,7 @@ export function createFiniteDeck(): Card[] {
   for (const [valueStr, count] of Object.entries(deckConfig)) {
     const value = parseInt(valueStr, 10);
     for (let i = 0; i < count; i++) {
-      deck.push({
-        id: Math.random(), // 고유 ID 부여
-        value: value,
-        color: getColorForValue(value)
-      });
+      deck.push(createCardWithLuck(value));
     }
   }
 

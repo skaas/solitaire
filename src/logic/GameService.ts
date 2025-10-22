@@ -1,8 +1,25 @@
 import { processChainMerge } from './GameLogic';
 import { useGameStore } from '../state/GameState';
 import { useUIStore } from '../state/UIState';
+import { recordMergeLuck } from './LuckTracker';
+import { evaluateFortune } from './FortuneEvaluator';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const syncGameOverState = (): void => {
+  const latestState = useGameStore.getState();
+  const uiState = useUIStore.getState();
+  const evaluation = latestState.checkGameOver();
+
+  uiState.setGameOver(evaluation);
+
+  if (evaluation.isGameOver) {
+    const report = evaluateFortune(latestState.columns, latestState.queue);
+    uiState.setFortuneReport(report);
+  } else {
+    uiState.setFortuneReport(null);
+  }
+};
 
 export const GameService = {
   moveCardFromQueue(toColumnId: number) {
@@ -59,7 +76,6 @@ export const GameService = {
 
   undo() {
     const state = useGameStore.getState();
-    const uiState = useUIStore.getState();
     const { history, undoCount } = state;
 
     if (undoCount === 0 || history.length === 0) {
@@ -75,13 +91,11 @@ export const GameService = {
     state.setHistory(remainingHistory);
     state.setUndoCount(undoCount - 1);
 
-    const gameOverEvaluation = state.checkGameOver();
-    uiState.setGameOver(gameOverEvaluation);
+    syncGameOverState();
   },
 
   trashCard() {
     const state = useGameStore.getState();
-    const uiState = useUIStore.getState();
     const { queue, deck, trashCount } = state;
 
     if (trashCount === 0 || queue.length === 0) {
@@ -100,8 +114,7 @@ export const GameService = {
     state.setDeck(updatedDeck);
     state.setTrashCount(trashCount - 1);
 
-    const gameOverEvaluation = state.checkGameOver();
-    uiState.setGameOver(gameOverEvaluation);
+    syncGameOverState();
   },
 
   async processMergeWithAnimation(columnId: number): Promise<void> {
@@ -116,6 +129,7 @@ export const GameService = {
     const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards);
 
     if (scoreGained > 0) {
+      recordMergeLuck(column.cards, mergedCards);
       uiState.setAnimating(true);
       uiState.addAnimatingCards(mergedCardIds);
 
@@ -137,9 +151,7 @@ export const GameService = {
     }
 
     state.unlockHigherTierCards();
-
-    const gameOverEvaluation = state.checkGameOver();
-    uiState.setGameOver(gameOverEvaluation);
+    syncGameOverState();
   },
 
   resetGame() {

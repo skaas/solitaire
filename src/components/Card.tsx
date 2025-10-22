@@ -29,7 +29,7 @@ const Card = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`w-full aspect-[5/7] ${card.color} rounded-lg flex items-start justify-start p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-0 ${
+      className={`w-full aspect-[5/7] ${card.color} rounded-lg flex flex-col items-start justify-between p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-0 ${
         isDraggable && isFromQueue ? 'cursor-grab active:cursor-grabbing hover:scale-105' : 'cursor-default'
       } ${
         isAnimating ? 'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75' : ''
@@ -43,7 +43,12 @@ const Card = ({
         isDeadlockColumnCard ? 'scale-110 animate-shake' : ''
       }`}
     >
-      {card.value}
+      <div className="text-base flex items-center">
+        <span>{card.suitEmoji}</span>
+        <span className="ml-1 text-sm font-semibold">{card.suitLabel}</span>
+      </div>
+      <div className="self-center text-3xl">{card.value}</div>
+      <div className="text-xs self-end opacity-80">{card.tier === 3 ? '대운' : `${card.tier}단계`}</div>
     </div>
   );
 

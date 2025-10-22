@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import type { FortuneReport } from '../types';
 
 type AnimatingCards = number[];
 
@@ -12,6 +13,7 @@ type UIState = {
   gameOverReason: GameOverReason;
   isGameOver: boolean;
   animationFinished: boolean;
+  fortuneReport: FortuneReport | null;
   setAnimating: (isAnimating: boolean) => void;
   addAnimatingCards: (cardIds: number[]) => void;
   removeAnimatingCards: (cardIds: number[]) => void;
@@ -19,6 +21,7 @@ type UIState = {
   setGameOver: (payload: { isGameOver: boolean; triggerColumnId: number | null; reason: GameOverReason | null }) => void;
   resetGameOver: () => void;
   setAnimationFinished: (finished: boolean) => void;
+  setFortuneReport: (report: FortuneReport | null) => void;
 };
 
 export const useUIStore = create<UIState>()(
@@ -29,6 +32,7 @@ export const useUIStore = create<UIState>()(
     gameOverReason: null,
     isGameOver: false,
     animationFinished: false,
+    fortuneReport: null,
 
     setAnimating: (isAnimating) => set((state) => {
       state.isAnimating = isAnimating;
@@ -59,6 +63,7 @@ export const useUIStore = create<UIState>()(
           state.gameOverTriggerColumnId = null;
           state.gameOverReason = null;
           state.animationFinished = false;
+          state.fortuneReport = null;
         }
       }),
 
@@ -68,11 +73,17 @@ export const useUIStore = create<UIState>()(
         state.gameOverTriggerColumnId = null;
         state.gameOverReason = null;
         state.animationFinished = false;
+        state.fortuneReport = null;
       }),
 
     setAnimationFinished: (finished) =>
       set((state) => {
         state.animationFinished = finished;
+      }),
+
+    setFortuneReport: (report) =>
+      set((state) => {
+        state.fortuneReport = report;
       }),
   })),
 );
