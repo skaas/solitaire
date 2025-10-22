@@ -1,6 +1,7 @@
 import type { Column as ColumnType } from '../types';
 import Card from './Card';
 import { useGameStore } from '../state/GameState';
+import { useUIStore } from '../state/UIState';
 import { canPlaceCard } from '../logic/GameLogic';
 import { Droppable } from './dnd/Droppable';
 
@@ -9,7 +10,8 @@ interface ColumnProps {
 }
 
 const Column = ({ column }: ColumnProps) => {
-  const { queue, gameOverTriggerColumnId, gameOverReason } = useGameStore();
+  const { queue } = useGameStore();
+  const { gameOverTriggerColumnId, gameOverReason } = useUIStore();
 
   const cardToMove = queue.length > 0 ? queue[queue.length - 1] : null;
 

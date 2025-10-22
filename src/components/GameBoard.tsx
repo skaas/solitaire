@@ -1,20 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../state/GameState';
+import { useUIStore } from '../state/UIState';
+import { GameService } from '../logic/GameService';
 import Column from './Column';
 import Card from './Card';
 import { DndContainer } from './dnd/DndContainer';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 const GameBoard = () => {
-  const { 
-    score, time, columns, queue, deck, 
-    undoCount, trashCount, isGameOver, gameOverReason,
-    resetGame, undo, trashCard,
-    moveCardFromQueue,
+  const {
+    score,
+    time,
+    columns,
+    queue,
+    deck,
+    undoCount,
+    trashCount,
   } = useGameStore();
 
+  const {
+    isAnimating,
+    isGameOver,
+    gameOverReason,
+    animationFinished,
+    setAnimationFinished,
+  } = useUIStore();
+
   const [showGameOverPopup, setShowGameOverPopup] = useState(false);
-  const [animationFinished, setAnimationFinished] = useState(false);
+  const showGameOverOverlay = useMemo(
+    () => animationFinished && isGameOver && showGameOverPopup,
+    [animationFinished, isGameOver, showGameOverPopup],
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -25,14 +41,14 @@ const GameBoard = () => {
       const targetColumn = columns.find(c => c.id === columnId);
 
       if (cardToMove && targetColumn && useGameStore.getState().canPlaceCard(cardToMove, targetColumn)) {
-        moveCardFromQueue(columnId);
+        GameService.moveCardFromQueue(columnId);
       }
     }
   };
   
   useEffect(() => {
     const timer = setInterval(() => {
-      useGameStore.setState((state) => ({ time: state.time + 1 }));
+      useGameStore.getState().incrementTime();
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -47,13 +63,7 @@ const GameBoard = () => {
       setAnimationFinished(false);
       setShowGameOverPopup(false);
     }
-  }, [isGameOver]);
-
-  const handleBoardClick = () => {
-    if (animationFinished && !showGameOverPopup) {
-      setShowGameOverPopup(true);
-    }
-  };
+  }, [isGameOver, setAnimationFinished]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -65,7 +75,11 @@ const GameBoard = () => {
     <DndContainer onDragEnd={handleDragEnd}>
       <div 
         className="h-dvh bg-gray-900 flex items-center justify-center p-4"
-        onClick={handleBoardClick}
+        onClick={() => {
+          if (animationFinished && !showGameOverPopup) {
+            setShowGameOverPopup(true);
+          }
+        }}
       >
         {/* 9:16 비율 고정 게임 보드 */}
         <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
@@ -112,8 +126,8 @@ const GameBoard = () => {
             {/* Left Controls: Undo */}
             <div className="flex flex-col gap-1 z-10">
                 <button 
-                  onClick={undo}
-                  disabled={undoCount === 0 || isGameOver}
+                  onClick={GameService.undo}
+                  disabled={undoCount === 0 || isGameOver || isAnimating}
                   className="bg-[#3A166A] p-2 rounded-lg flex items-center justify-between transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" 
                   style={{ width: '60px', height: '40px' }}
                 >
@@ -158,8 +172,8 @@ const GameBoard = () => {
             {/* Right Controls: Trash */}
             <div className="flex items-center z-10">
                 <button
-                  onClick={trashCard}
-                  disabled={trashCount === 0 || queue.length === 0 || isGameOver}
+                  onClick={GameService.trashCard}
+                  disabled={trashCount === 0 || queue.length === 0 || isGameOver || isAnimating}
                   className="bg-[#3A166A] p-2 rounded-lg flex flex-col items-center justify-center transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" 
                   style={{ width: '60px', height: '80px' }}
                 >
@@ -170,13 +184,13 @@ const GameBoard = () => {
           </div>
 
           {/* Game Over Overlay */}
-          {showGameOverPopup && (
+          {showGameOverOverlay && (
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50">
               <div className="bg-[#3A166A] p-6 rounded-lg text-center">
                 <h2 className="text-2xl font-bold text-red-400 mb-4">GAME OVER</h2>
                 <p className="text-yellow-400 mb-6">최종 점수: {score.toLocaleString()}</p>
                 <button 
-                  onClick={resetGame}
+                  onClick={GameService.resetGame}
                   className="bg-[#4E1E96] hover:bg-[#5E2EA6] px-6 py-2 rounded-lg font-bold transition-colors"
                 >
                   다시 시작

@@ -1,5 +1,5 @@
 import type { Card as CardType } from '../types';
-import { useGameStore } from '../state/GameState';
+import { useUIStore } from '../state/UIState';
 import { Draggable } from './dnd/Draggable';
 import type { CSSProperties } from 'react';
 
@@ -20,7 +20,7 @@ const Card = ({
   isDeadlockQueueCard = false,
   isDeadlockColumnCard = false,
 }: CardProps) => {
-  const animatingCards = useGameStore((state) => state.animatingCards);
+  const animatingCards = useUIStore((state) => state.animatingCards);
   const isAnimating = animatingCards.includes(card.id);
 
   const cardContent = (isDragging: boolean, style: CSSProperties, ref: any, attributes: any, listeners: any) => (

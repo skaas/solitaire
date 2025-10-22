@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 import type { Card, Column } from '../types';
-import { processChainMerge, createFiniteDeck, shuffleDeck, processAllMerges, getColorForValue } from '../logic/GameLogic';
+import { createFiniteDeck, shuffleDeck, processAllMerges, getColorForValue } from '../logic/GameLogic';
+import type { GameOverEvaluation } from './types';
 
 // GameState의 스냅샷 타입
 type GameStateSnapshot = {
@@ -10,7 +12,6 @@ type GameStateSnapshot = {
   score: number;
 };
 
-// GameState 인터페이스 업데이트
 interface GameState {
   score: number;
   time: number;
@@ -20,25 +21,21 @@ interface GameState {
   history: GameStateSnapshot[]; // 이전 상태 저장
   undoCount: number;
   trashCount: number;
-  isAnimating: boolean;
-  animatingCards: number[];
-  isGameOver: boolean;
-  gameOverTriggerColumnId: number | null;
-  gameOverReason: 'overflow' | 'deadlock' | 'deckEmpty' | null;
-  canPlaceCard: (card: Card, column: Column) => boolean;
   higherTierCardsAdded: boolean; // '32', '64' 카드 추가 여부 추적
-  setColumns: (columns: Column[]) => void;
-  setQueue: (queue: Card[]) => void;
-  moveCardFromQueue: (toColumnId: number) => void;
-  addScore: (points: number) => void;
-  setAnimating: (isAnimating: boolean) => void;
-  setAnimatingCards: (cardIds: number[]) => void;
-  processMergeWithAnimation: (columnId: number) => void;
-  checkGameOver: () => boolean;
-  resetGame: () => void;
-  undo: () => void; // 되돌리기
-  trashCard: () => void; // 카드 버리기
-  unlockHigherTierCards: () => void;
+  canPlaceCard: (card: Card, column: Column) => boolean;
+  setColumns(columns: Column[]): void;
+  setQueue(queue: Card[]): void;
+  setDeck(deck: Card[]): void;
+  setHistory(history: GameStateSnapshot[]): void;
+  setUndoCount(undoCount: number): void;
+  setTrashCount(trashCount: number): void;
+  addScore(points: number): void;
+  setScore(score: number): void;
+  resetState(): void;
+  setHigherTierCardsAdded(value: boolean): void;
+  setTime(time: number): void;
+  incrementTime(): void;
+  checkGameOver: () => GameOverEvaluation;
 }
 
 // 게임 초기화 함수
@@ -92,214 +89,132 @@ const initializeGame = () => {
     history: [],
     undoCount: 2,
     trashCount: 1,
-    isAnimating: false,
-    animatingCards: [],
-    isGameOver: false,
-    gameOverTriggerColumnId: null,
-    gameOverReason: null,
     higherTierCardsAdded: false,
   };
 };
 
-export const useGameStore = create<GameState>((set, get) => ({
-  ...initializeGame(),
+export const useGameStore = create<GameState>()(
+  immer((set, get) => ({
+    ...initializeGame(),
 
-  canPlaceCard: (card: Card, column: Column): boolean => {
-    if (column.cards.length === 0) {
-      return true;
-    }
-    const topCard = column.cards[column.cards.length - 1];
-    return card.value <= topCard.value;
-  },
-
-  setColumns: (columns) => set({ columns }),
-  setQueue: (queue) => set({ queue }),
-  
-  moveCardFromQueue: (toColumnId: number) => {
-    const state = get();
-    if (state.isAnimating || state.isGameOver) return;
-    if (state.queue.length === 0) return;
-
-    const toColumn = state.columns.find(col => col.id === toColumnId);
-    const cardToMove = state.queue[state.queue.length - 1];
-
-    if (toColumn && cardToMove) {
-      if (!get().canPlaceCard(cardToMove, toColumn)) {
-        return;
-      }
-      
-      const newQueue = state.queue.slice(0, -1);
-      const newDeck = [...state.deck];
-      const nextCard = newDeck.pop();
-      if (nextCard) {
-        newQueue.unshift(nextCard);
-      }
-
-      const newColumns = state.columns.map(col =>
-        col.id === toColumnId
-          ? { ...col, cards: [...col.cards, cardToMove] }
-          : col
-      );
-      
-      const currentState = get();
-      const newHistory = [
-        {
-          columns: currentState.columns,
-          queue: currentState.queue,
-          deck: currentState.deck,
-          score: currentState.score,
-        },
-        ...currentState.history,
-      ].slice(0, 2);
-
-      set({
-        columns: newColumns,
-        queue: newQueue,
-        deck: newDeck,
-        history: newHistory,
-      });
-
-      setTimeout(() => get().processMergeWithAnimation(toColumnId), 100);
-    }
-  },
-
-  undo: () => {
-    const { history, undoCount } = get();
-    if (undoCount > 0 && history.length > 0) {
-      const lastState = history[0];
-      set({
-        ...lastState,
-        history: history.slice(1),
-        undoCount: undoCount - 1,
-      });
-      if (get().checkGameOver()) {
-        set({ isGameOver: true });
-      }
-    }
-  },
-
-  trashCard: () => {
-    const { queue, deck, trashCount } = get();
-    if (trashCount > 0 && queue.length > 0) {
-      const newQueue = queue.slice(0, -1);
-      const newDeck = [...deck];
-
-      const nextCard = newDeck.pop();
-      if (nextCard) {
-        newQueue.unshift(nextCard);
-      }
-
-      set({
-        queue: newQueue,
-        deck: newDeck,
-        trashCount: trashCount - 1,
-      });
-      if (get().checkGameOver()) {
-        set({ isGameOver: true });
-      }
-    }
-  },
-
-  checkGameOver: () => {
-    const { columns, deck, queue, trashCount, canPlaceCard } = get();
-    
-    const overflowingColumn = columns.find(col => col.cards.length >= 8);
-    if (overflowingColumn) {
-      set({ gameOverTriggerColumnId: overflowingColumn.id, gameOverReason: 'overflow' });
-      return true;
-    }
-    
-    if (deck.length === 0 && queue.length === 0) {
-      set({ gameOverReason: 'deckEmpty' });
-      return true;
-    }
-
-    if (queue.length > 0) {
-      const cardToMove = queue[queue.length - 1];
-      const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
-      if (noValidMoves && trashCount === 0) {
-        set({ gameOverReason: 'deadlock' });
+    canPlaceCard: (card: Card, column: Column): boolean => {
+      if (column.cards.length === 0) {
         return true;
       }
-    }
+      const topCard = column.cards[column.cards.length - 1];
+      return card.value <= topCard.value;
+    },
 
-    return false;
-  },
-
-  resetGame: () => {
-    set(initializeGame());
-  },
-
-  addScore: (points) => set((state) => ({ score: state.score + points })),
-  setAnimating: (isAnimating) => set({ isAnimating }),
-  setAnimatingCards: (cardIds) => set({ animatingCards: cardIds }),
+    setColumns: (columns) => set((state) => {
+      state.columns = columns;
+    }),
+    setQueue: (queue) => set((state) => {
+      state.queue = queue;
+    }),
+    setDeck: (deck) => set((state) => {
+      state.deck = deck;
+    }),
+    setHistory: (history) => set((state) => {
+      state.history = history;
+    }),
+    setUndoCount: (undoCount) => set((state) => {
+      state.undoCount = undoCount;
+    }),
+    setTrashCount: (trashCount) => set((state) => {
+      state.trashCount = trashCount;
+    }),
   
-  processMergeWithAnimation: async (columnId: number) => {
-    const state = get();
-    const column = state.columns.find(col => col.id === columnId);
-    if (!column) return;
+    checkGameOver: () => {
+      const { columns, deck, queue, trashCount, canPlaceCard } = get();
 
-    const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards);
-
-    if (scoreGained > 0) {
-      set({ isAnimating: true });
-      mergedCardIds.forEach((id: number) => get().setAnimatingCards([...get().animatingCards, id]));
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      set(currentState => {
-        const newColumns = currentState.columns.map(c => 
-          c.id === columnId ? { ...c, cards: mergedCards } : c
-        );
-        return { 
-          columns: newColumns,
-          score: currentState.score + scoreGained,
-          isAnimating: false,
-          animatingCards: get().animatingCards.filter((id: number) => !mergedCardIds.includes(id)),
+      const overflowingColumn = columns.find(col => col.cards.length >= 8);
+      if (overflowingColumn) {
+        return {
+          isGameOver: true,
+          triggerColumnId: overflowingColumn.id,
+          reason: 'overflow' as const,
         };
-      });
-
-      get().processMergeWithAnimation(columnId);
-
-    } else {
-      get().unlockHigherTierCards();
-      if (get().checkGameOver()) {
-        set({ isGameOver: true });
       }
-    }
-  },
 
-  unlockHigherTierCards: () => {
-    const { columns, deck, higherTierCardsAdded } = get();
-    if (higherTierCardsAdded) return;
+      if (deck.length === 0 && queue.length === 0) {
+        return {
+          isGameOver: true,
+          triggerColumnId: null,
+          reason: 'deckEmpty' as const,
+        };
+      }
 
-    const hasSixtyFourOrMore = columns.some(col => 
-      col.cards.some(card => card.value >= 64)
-    );
+      if (queue.length > 0) {
+        const cardToMove = queue[queue.length - 1];
+        const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
+        if (noValidMoves && trashCount === 0) {
+          return {
+            isGameOver: true,
+            triggerColumnId: null,
+            reason: 'deadlock' as const,
+          };
+        }
+      }
 
-    if (hasSixtyFourOrMore) {
-      const newCards: Card[] = [];
-      // '32' 카드 18장 추가
-      for (let i = 0; i < 18; i++) {
-        newCards.push({
-          id: Math.random(),
-          value: 32,
-          color: getColorForValue(32)
+      return {
+        isGameOver: false,
+        triggerColumnId: null,
+        reason: null,
+      };
+    },
+
+    addScore: (points) => set((state) => {
+      state.score += points;
+    }),
+    setScore: (score) => set((state) => {
+      state.score = score;
+    }),
+    resetState: () => set(() => initializeGame()),
+    setHigherTierCardsAdded: (value) => set((state) => {
+      state.higherTierCardsAdded = value;
+    }),
+    setTime: (time) => set((state) => {
+      state.time = time;
+    }),
+    incrementTime: () => set((state) => {
+      state.time += 1;
+    }),
+
+    unlockHigherTierCards: () => {
+      const { columns, deck, higherTierCardsAdded } = get();
+      if (higherTierCardsAdded) return;
+
+      const hasSixtyFourOrMore = columns.some(col => 
+        col.cards.some(card => card.value >= 64)
+      );
+
+      if (hasSixtyFourOrMore) {
+        const newCards: Card[] = [];
+        // '32' 카드 18장 추가
+        for (let i = 0; i < 18; i++) {
+          newCards.push({
+            id: Math.random(),
+            value: 32,
+            color: getColorForValue(32)
+          });
+        }
+        // '64' 카드 4장 추가
+        for (let i = 0; i < 4; i++) {
+          newCards.push({
+            id: Math.random(),
+            value: 64,
+            color: getColorForValue(64)
+          });
+        }
+        
+        const newDeck = shuffleDeck([...deck, ...newCards]);
+        set((state) => {
+          state.deck = newDeck;
+          state.higherTierCardsAdded = true;
         });
+        
+        console.log("Congratulations! 32 and 64 cards have been added to the deck!");
       }
-      // '64' 카드 4장 추가
-      for (let i = 0; i < 4; i++) {
-        newCards.push({
-          id: Math.random(),
-          value: 64,
-          color: getColorForValue(64)
-        });
-      }
-      
-      const newDeck = shuffleDeck([...deck, ...newCards]);
-      set({ deck: newDeck, higherTierCardsAdded: true });
-      
-      console.log("Congratulations! 32 and 64 cards have been added to the deck!");
-    }
-  },
-}));
+    },
+  })),
+);
