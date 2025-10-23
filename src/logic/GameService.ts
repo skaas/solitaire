@@ -93,6 +93,18 @@ export const GameService = {
       latestState.addScore(scoreGained);
       latestUIState.setAnimating(false);
       latestUIState.removeAnimatingCards(mergedCardIds);
+      if (mergedCards.length > 0) {
+        const newTopCard = mergedCards[mergedCards.length - 1];
+        if (newTopCard.tier >= 2) {
+          const messageLines = [
+            newTopCard.tier === 3 ? '✨ 대운이 깨어났습니다 ✨' : '🌕 운이 진화했습니다',
+            `${newTopCard.suitEmoji} ${newTopCard.suitLabel}`,
+            `카드 값 ${newTopCard.value.toLocaleString()}으로 합체 완료`,
+            '좋은 흐름이 이어집니다.',
+          ];
+          latestUIState.addFortuneMessages(messageLines);
+        }
+      }
 
       await GameService.processMergeWithAnimation(columnId);
       return;

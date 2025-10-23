@@ -25,6 +25,7 @@ const GameBoard = () => {
     setAnimationFinished,
     fortuneReport,
     queueShake,
+    fortuneMessage,
   } = useUIStore();
 
   const showGameOverOverlay = useMemo(
@@ -98,7 +99,7 @@ const GameBoard = () => {
           </div>
 
           {/* Game Area: 4 Columns */}
-          <div className="flex-grow grid grid-cols-4 gap-3 px-4 relative">
+          <div className="flex-grow grid grid-cols-4 gap-3 px-3 pt-2 pb-8 relative">
             {/* 8장 경고선 - 전체 게임 영역에 하나로 통합 */}
             <div 
               className="absolute w-full h-1 bg-red-500 z-20 opacity-80"
@@ -119,34 +120,44 @@ const GameBoard = () => {
           </div>
 
           {/* Bottom Bar: Controls and Queue */}
-          <div className="flex items-center justify-center p-4 relative" style={{ height: '120px' }}>
-            {/* Center: Card Queue - 겹치게 배치 */}
-            <div className={`flex items-center justify-center relative ${queueShake ? 'animate-shake' : ''}`}>
-                {queue.map((card, index) => {
-                  const totalWidth = 80 + (queue.length - 1) * 25;
-                  const startOffset = -totalWidth / 2;
-                  const isLastCardInQueue = index === queue.length - 1;
+          <div className="px-4 pb-8">
+            <div className="flex flex-col gap-6">
+              <div className="relative flex justify-center h-[110px]">
+                <div className={`flex items-end justify-center relative ${queueShake ? 'animate-shake' : ''}`}>
+                  {queue.map((card, index) => {
+                    const offset = (index - (queue.length - 1) / 2) * 25;
+                    const isLastCardInQueue = index === queue.length - 1;
 
-                  return (
-                     <div 
-                       key={card.id} 
-                       className="absolute"
-                       style={{
-                         left: `${startOffset + index * 25}px`, // 중앙 기준으로 배치
-                         zIndex: index + 1 // 오른쪽 카드가 위에 오도록
-                       }}
-                     >
+                    return (
+                      <div
+                        key={card.id}
+                        className="absolute bottom-0"
+                        style={{ transform: `translateX(${offset}px)` }}
+                      >
                         <div className="w-20">
-                            <Card 
-                              card={card}
-                              isDraggable={isLastCardInQueue}
-                              isFromQueue={true}
-                              isDeadlockQueueCard={isLastCardInQueue && gameOverReason === 'deadlock'}
-                            />
+                          <Card
+                            card={card}
+                            isDraggable={isLastCardInQueue}
+                            isFromQueue
+                            isDeadlockQueueCard={isLastCardInQueue && gameOverReason === 'deadlock'}
+                          />
                         </div>
-                     </div>
-                  );
-                })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="bg-black/40 rounded-xl border border-white/10 px-4 py-3 min-h-[96px]">
+                {fortuneMessage.length > 0 ? (
+                  <div className="space-y-1 text-sm leading-relaxed">
+                    {fortuneMessage.slice(0, 5).map((line, idx) => (
+                      <p key={idx} className="text-white/85">{line}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-white/50 text-sm">아직 운의 메시지가 없습니다.</p>
+                )}
+              </div>
             </div>
           </div>
 

@@ -15,6 +15,7 @@ type UIState = {
   animationFinished: boolean;
   fortuneReport: FortuneReport | null;
   queueShake: boolean;
+  fortuneMessage: string[];
   setAnimating: (isAnimating: boolean) => void;
   addAnimatingCards: (cardIds: number[]) => void;
   removeAnimatingCards: (cardIds: number[]) => void;
@@ -24,6 +25,7 @@ type UIState = {
   setAnimationFinished: (finished: boolean) => void;
   setFortuneReport: (report: FortuneReport | null) => void;
   setQueueShake: (value: boolean) => void;
+  addFortuneMessages: (lines: string[]) => void;
 };
 
 export const useUIStore = create<UIState>()(
@@ -36,6 +38,7 @@ export const useUIStore = create<UIState>()(
     animationFinished: false,
     fortuneReport: null,
     queueShake: false,
+    fortuneMessage: [],
 
     setAnimating: (isAnimating) => set((state) => {
       state.isAnimating = isAnimating;
@@ -80,6 +83,7 @@ export const useUIStore = create<UIState>()(
         state.animationFinished = false;
         state.fortuneReport = null;
         state.queueShake = false;
+        state.fortuneMessage = [];
       }),
 
     setAnimationFinished: (finished) =>
@@ -98,6 +102,16 @@ export const useUIStore = create<UIState>()(
     setQueueShake: (value) =>
       set((state) => {
         state.queueShake = value;
+      }),
+
+    addFortuneMessages: (lines) =>
+      set((state) => {
+        const combined = [...state.fortuneMessage, ...lines];
+        if (combined.length <= 4) {
+          state.fortuneMessage = combined;
+        } else {
+          state.fortuneMessage = combined.slice(combined.length - 4);
+        }
       }),
   })),
 );

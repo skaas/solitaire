@@ -2,6 +2,7 @@ import type { Card as CardType } from '../types';
 import { useUIStore } from '../state/UIState';
 import { Draggable } from './dnd/Draggable';
 import type { CSSProperties } from 'react';
+import clsx from 'clsx';
 
 interface CardProps {
   card: CardType;
@@ -12,14 +13,7 @@ interface CardProps {
   isDeadlockColumnCard?: boolean;
 }
 
-const Card = ({ 
-  card, 
-  isDraggable = false, 
-  isFromQueue = false, 
-  isGameOverCard = false,
-  isDeadlockQueueCard = false,
-  isDeadlockColumnCard = false,
-}: CardProps) => {
+const Card = ({ card, isDraggable = false, isFromQueue = false, isGameOverCard = false, isDeadlockQueueCard = false, isDeadlockColumnCard = false }: CardProps) => {
   const animatingCards = useUIStore((state) => state.animatingCards);
   const isAnimating = animatingCards.includes(card.id);
 
@@ -29,19 +23,19 @@ const Card = ({
       style={style}
       {...attributes}
       {...listeners}
-      className={`w-full aspect-[5/7] ${card.color} rounded-lg flex flex-col items-start justify-between p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-0 ${
-        isDraggable && isFromQueue ? 'cursor-grab active:cursor-grabbing hover:scale-105' : 'cursor-default'
-      } ${
-        isAnimating ? 'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75' : ''
-      } ${
-        isDragging ? 'opacity-50' : ''
-      } ${
-        isGameOverCard ? 'animate-shake' : ''
-      } ${
-        isDeadlockQueueCard ? 'scale-110 fill-black-setup animate-fill-black' : ''
-      } ${
-        isDeadlockColumnCard ? 'scale-110 animate-shake' : ''
-      }`}
+      className={clsx(
+        'fortune-card w-full aspect-[5/7] rounded-lg flex flex-col items-start justify-between p-2 text-white text-2xl font-bold shadow-md border-b-4 border-black/20 transition-all duration-0',
+        card.color,
+        {
+          'cursor-grab active:cursor-grabbing hover:scale-105': isDraggable && isFromQueue,
+          'cursor-default': !(isDraggable && isFromQueue),
+          'animate-pulse scale-110 ring-4 ring-yellow-400 ring-opacity-75': isAnimating,
+          'opacity-50': isDragging,
+          'animate-shake': isGameOverCard,
+          'scale-110 fill-black-setup animate-fill-black': isDeadlockQueueCard,
+          'scale-110 animate-shake': isDeadlockColumnCard,
+        },
+      )}
     >
       <div className="text-base flex items-center">
         <span>{card.suitEmoji}</span>

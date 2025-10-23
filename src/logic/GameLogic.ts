@@ -117,7 +117,11 @@ export function generateNewCard(maxPower: number = 4): Card {
  * @param column 병합을 체크할 컬럼
  * @returns 병합된 컬럼과 획득한 점수
  */
-export function processChainMerge(cards: Card[]): { mergedCards: Card[], scoreGained: number, mergedCardIds: number[] } {
+export function processChainMerge(cards: Card[]): {
+  mergedCards: Card[];
+  scoreGained: number;
+  mergedCardIds: number[];
+} {
   if (cards.length < 2) {
     return { mergedCards: cards, scoreGained: 0, mergedCardIds: [] };
   }
@@ -134,7 +138,9 @@ export function processChainMerge(cards: Card[]): { mergedCards: Card[], scoreGa
     
     mergedCardIds.push(newCards[lastIndex].id, newCards[lastIndex - 1].id);
 
-    const newCard = createCardWithLuck(mergedValue, { sourceCards: [newCards[lastIndex], newCards[lastIndex - 1]] });
+    const newCard = createCardWithLuck(mergedValue, {
+      sourceCards: [newCards[lastIndex], newCards[lastIndex - 1]],
+    });
 
     newCards = [...newCards.slice(0, lastIndex - 1), newCard];
   }
