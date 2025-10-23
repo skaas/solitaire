@@ -18,7 +18,6 @@ const GameBoard = () => {
   } = useGameStore();
 
   const {
-    isAnimating,
     isGameOver,
     gameOverReason,
     animationFinished,
