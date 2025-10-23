@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGameStore } from '../state/GameState';
 import { useUIStore } from '../state/UIState';
 import { GameService } from '../logic/GameService';
@@ -15,8 +15,6 @@ const GameBoard = () => {
     columns,
     queue,
     deck,
-    undoCount,
-    trashCount,
   } = useGameStore();
 
   const {
@@ -26,12 +24,12 @@ const GameBoard = () => {
     animationFinished,
     setAnimationFinished,
     fortuneReport,
+    queueShake,
   } = useUIStore();
 
-  const [showGameOverPopup, setShowGameOverPopup] = useState(false);
   const showGameOverOverlay = useMemo(
-    () => animationFinished && isGameOver && showGameOverPopup,
-    [animationFinished, isGameOver, showGameOverPopup],
+    () => animationFinished && isGameOver,
+    [animationFinished, isGameOver],
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -63,7 +61,6 @@ const GameBoard = () => {
       return () => clearTimeout(timer);
     } else {
       setAnimationFinished(false);
-      setShowGameOverPopup(false);
     }
   }, [isGameOver, setAnimationFinished]);
 
@@ -77,14 +74,12 @@ const GameBoard = () => {
     <DndContainer onDragEnd={handleDragEnd}>
       <div 
         className="h-dvh bg-gray-900 flex items-center justify-center p-4"
-        onClick={() => {
-          if (animationFinished && !showGameOverPopup) {
-            setShowGameOverPopup(true);
-          }
-        }}
       >
         {/* 9:16 비율 고정 게임 보드 */}
-        <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative">
+        <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#4E1E96] flex flex-col text-white font-sans relative overflow-hidden">
+          {isGameOver && !animationFinished && (
+            <div className="absolute left-0 right-0 bottom-0 h-full bg-black/90 z-40 animate-fill-up" />
+          )}
           {/* Top Bar: Score and Time */}
           <div className="flex justify-between items-center p-4">
             <div className="bg-[#3A166A] p-2 rounded-lg flex items-center">
@@ -124,26 +119,9 @@ const GameBoard = () => {
           </div>
 
           {/* Bottom Bar: Controls and Queue */}
-          <div className="flex items-center justify-between p-4 relative" style={{ height: '120px' }}>
-            {/* Left Controls: Undo */}
-            <div className="flex flex-col gap-1 z-10">
-                <button 
-                  onClick={GameService.undo}
-                  disabled={undoCount === 0 || isGameOver || isAnimating}
-                  className="bg-[#3A166A] p-2 rounded-lg flex items-center justify-between transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" 
-                  style={{ width: '60px', height: '40px' }}
-                >
-                    <span className="text-sm">↩️</span>
-                    <span className="text-xs font-bold">{undoCount}</span>
-                </button>
-                 <div className="bg-[#3A166A] p-2 rounded-lg flex items-center justify-between opacity-50" style={{ width: '60px', height: '40px' }}>
-                    <span className="text-sm">↪️</span>
-                    <span className="text-xs font-bold">0</span>
-                </div>
-            </div>
-            
+          <div className="flex items-center justify-center p-4 relative" style={{ height: '120px' }}>
             {/* Center: Card Queue - 겹치게 배치 */}
-            <div className="flex items-center justify-center relative">
+            <div className={`flex items-center justify-center relative ${queueShake ? 'animate-shake' : ''}`}>
                 {queue.map((card, index) => {
                   const totalWidth = 80 + (queue.length - 1) * 25;
                   const startOffset = -totalWidth / 2;
@@ -169,19 +147,6 @@ const GameBoard = () => {
                      </div>
                   );
                 })}
-            </div>
-
-            {/* Right Controls: Trash */}
-            <div className="flex items-center z-10">
-                <button
-                  onClick={GameService.trashCard}
-                  disabled={trashCount === 0 || queue.length === 0 || isGameOver || isAnimating}
-                  className="bg-[#3A166A] p-2 rounded-lg flex flex-col items-center justify-center transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" 
-                  style={{ width: '60px', height: '80px' }}
-                >
-                     <span className="text-2xl">🗑️</span>
-                     <span className="text-xs font-bold">{trashCount}</span>
-                </button>
             </div>
           </div>
 

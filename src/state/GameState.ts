@@ -6,30 +6,17 @@ import type { GameOverEvaluation } from './types';
 import { clearMergeHistory } from '../logic/LuckTracker';
 
 // GameState의 스냅샷 타입
-type GameStateSnapshot = {
-  columns: Column[];
-  queue: Card[];
-  deck: Card[];
-  score: number;
-};
-
 interface GameState {
   score: number;
   time: number;
   columns: Column[];
   queue: Card[];
   deck: Card[];
-  history: GameStateSnapshot[]; // 이전 상태 저장
-  undoCount: number;
-  trashCount: number;
   higherTierCardsAdded: boolean; // '32', '64' 카드 추가 여부 추적
   canPlaceCard: (card: Card, column: Column) => boolean;
   setColumns(columns: Column[]): void;
   setQueue(queue: Card[]): void;
   setDeck(deck: Card[]): void;
-  setHistory(history: GameStateSnapshot[]): void;
-  setUndoCount(undoCount: number): void;
-  setTrashCount(trashCount: number): void;
   addScore(points: number): void;
   setScore(score: number): void;
   resetState(): void;
@@ -89,9 +76,6 @@ const initializeGame = () => {
     deck: newDeck,
     score: initialScore, // 초기 점수 반영
     time: 0,
-    history: [],
-    undoCount: 2,
-    trashCount: 1,
     higherTierCardsAdded: false,
   };
 };
@@ -117,18 +101,9 @@ export const useGameStore = create<GameState>()(
     setDeck: (deck) => set((state) => {
       state.deck = deck;
     }),
-    setHistory: (history) => set((state) => {
-      state.history = history;
-    }),
-    setUndoCount: (undoCount) => set((state) => {
-      state.undoCount = undoCount;
-    }),
-    setTrashCount: (trashCount) => set((state) => {
-      state.trashCount = trashCount;
-    }),
   
     checkGameOver: () => {
-      const { columns, deck, queue, trashCount, canPlaceCard } = get();
+      const { columns, deck, queue, canPlaceCard } = get();
 
       const overflowingColumn = columns.find(col => col.cards.length >= 8);
       if (overflowingColumn) {
@@ -150,7 +125,7 @@ export const useGameStore = create<GameState>()(
       if (queue.length > 0) {
         const cardToMove = queue[queue.length - 1];
         const noValidMoves = columns.every(col => !canPlaceCard(cardToMove, col));
-        if (noValidMoves && trashCount === 0) {
+        if (noValidMoves) {
           return {
             isGameOver: true,
             triggerColumnId: null,

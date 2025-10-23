@@ -14,6 +14,7 @@ type UIState = {
   isGameOver: boolean;
   animationFinished: boolean;
   fortuneReport: FortuneReport | null;
+  queueShake: boolean;
   setAnimating: (isAnimating: boolean) => void;
   addAnimatingCards: (cardIds: number[]) => void;
   removeAnimatingCards: (cardIds: number[]) => void;
@@ -22,6 +23,7 @@ type UIState = {
   resetGameOver: () => void;
   setAnimationFinished: (finished: boolean) => void;
   setFortuneReport: (report: FortuneReport | null) => void;
+  setQueueShake: (value: boolean) => void;
 };
 
 export const useUIStore = create<UIState>()(
@@ -33,6 +35,7 @@ export const useUIStore = create<UIState>()(
     isGameOver: false,
     animationFinished: false,
     fortuneReport: null,
+    queueShake: false,
 
     setAnimating: (isAnimating) => set((state) => {
       state.isAnimating = isAnimating;
@@ -59,11 +62,13 @@ export const useUIStore = create<UIState>()(
           state.gameOverTriggerColumnId = triggerColumnId;
           state.gameOverReason = reason ?? null;
           state.animationFinished = false;
+          state.queueShake = true;
         } else {
           state.gameOverTriggerColumnId = null;
           state.gameOverReason = null;
           state.animationFinished = false;
           state.fortuneReport = null;
+          state.queueShake = false;
         }
       }),
 
@@ -74,16 +79,25 @@ export const useUIStore = create<UIState>()(
         state.gameOverReason = null;
         state.animationFinished = false;
         state.fortuneReport = null;
+        state.queueShake = false;
       }),
 
     setAnimationFinished: (finished) =>
       set((state) => {
         state.animationFinished = finished;
+        if (finished) {
+          state.queueShake = false;
+        }
       }),
 
     setFortuneReport: (report) =>
       set((state) => {
         state.fortuneReport = report;
+      }),
+
+    setQueueShake: (value) =>
+      set((state) => {
+        state.queueShake = value;
       }),
   })),
 );

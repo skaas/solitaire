@@ -56,15 +56,6 @@ export const GameService = {
     const updatedColumns = state.columns.map((column) =>
       column.id === toColumnId ? { ...column, cards: [...column.cards, cardToMove] } : column,
     );
-
-    const historySnapshot = {
-      columns: state.columns,
-      queue: state.queue,
-      deck: state.deck,
-      score: state.score,
-    };
-
-    state.setHistory([historySnapshot, ...state.history].slice(0, 2));
     state.setColumns(updatedColumns);
     state.setQueue(updatedQueue);
     state.setDeck(updatedDeck);
@@ -72,49 +63,6 @@ export const GameService = {
     setTimeout(() => {
       void GameService.processMergeWithAnimation(toColumnId);
     }, 100);
-  },
-
-  undo() {
-    const state = useGameStore.getState();
-    const { history, undoCount } = state;
-
-    if (undoCount === 0 || history.length === 0) {
-      return;
-    }
-
-    const [previousState, ...remainingHistory] = history;
-
-    state.setColumns(previousState.columns);
-    state.setQueue(previousState.queue);
-    state.setDeck(previousState.deck);
-    state.setScore(previousState.score);
-    state.setHistory(remainingHistory);
-    state.setUndoCount(undoCount - 1);
-
-    syncGameOverState();
-  },
-
-  trashCard() {
-    const state = useGameStore.getState();
-    const { queue, deck, trashCount } = state;
-
-    if (trashCount === 0 || queue.length === 0) {
-      return;
-    }
-
-    const updatedQueue = queue.slice(0, -1);
-    const updatedDeck = [...deck];
-    const nextCard = updatedDeck.pop();
-
-    if (nextCard) {
-      updatedQueue.unshift(nextCard);
-    }
-
-    state.setQueue(updatedQueue);
-    state.setDeck(updatedDeck);
-    state.setTrashCount(trashCount - 1);
-
-    syncGameOverState();
   },
 
   async processMergeWithAnimation(columnId: number): Promise<void> {

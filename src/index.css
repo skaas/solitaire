@@ -51,3 +51,7 @@
     height: 100%;
   }
 }
+
+.animate-fill-up {
+  animation: fill-up 1.5s ease-in-out forwards;
+}
