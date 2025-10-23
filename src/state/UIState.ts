@@ -16,6 +16,9 @@ type UIState = {
   fortuneReport: FortuneReport | null;
   queueShake: boolean;
   fortuneMessage: string[];
+  maxFortuneValue: number;
+  hasSeenTier3: boolean;
+  maxTier3Value: number;
   setAnimating: (isAnimating: boolean) => void;
   addAnimatingCards: (cardIds: number[]) => void;
   removeAnimatingCards: (cardIds: number[]) => void;
@@ -26,6 +29,7 @@ type UIState = {
   setFortuneReport: (report: FortuneReport | null) => void;
   setQueueShake: (value: boolean) => void;
   addFortuneMessages: (lines: string[]) => void;
+  setFortuneProgress: (progress: Partial<Pick<UIState, 'maxFortuneValue' | 'hasSeenTier3' | 'maxTier3Value'>>) => void;
 };
 
 export const useUIStore = create<UIState>()(
@@ -39,6 +43,9 @@ export const useUIStore = create<UIState>()(
     fortuneReport: null,
     queueShake: false,
     fortuneMessage: [],
+    maxFortuneValue: 0,
+    hasSeenTier3: false,
+    maxTier3Value: 0,
 
     setAnimating: (isAnimating) => set((state) => {
       state.isAnimating = isAnimating;
@@ -84,6 +91,9 @@ export const useUIStore = create<UIState>()(
         state.fortuneReport = null;
         state.queueShake = false;
         state.fortuneMessage = [];
+        state.maxFortuneValue = 0;
+        state.hasSeenTier3 = false;
+        state.maxTier3Value = 0;
       }),
 
     setAnimationFinished: (finished) =>
@@ -111,6 +121,19 @@ export const useUIStore = create<UIState>()(
           state.fortuneMessage = combined;
         } else {
           state.fortuneMessage = combined.slice(combined.length - 4);
+        }
+      }),
+
+    setFortuneProgress: (progress) =>
+      set((state) => {
+        if (progress.maxFortuneValue !== undefined) {
+          state.maxFortuneValue = progress.maxFortuneValue;
+        }
+        if (progress.hasSeenTier3 !== undefined) {
+          state.hasSeenTier3 = progress.hasSeenTier3;
+        }
+        if (progress.maxTier3Value !== undefined) {
+          state.maxTier3Value = progress.maxTier3Value;
         }
       }),
   })),

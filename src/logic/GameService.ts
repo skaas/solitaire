@@ -95,14 +95,39 @@ export const GameService = {
       latestUIState.removeAnimatingCards(mergedCardIds);
       if (mergedCards.length > 0) {
         const newTopCard = mergedCards[mergedCards.length - 1];
-        if (newTopCard.tier >= 2) {
-          const messageLines = [
-            newTopCard.tier === 3 ? '✨ 대운이 깨어났습니다 ✨' : '🌕 운이 진화했습니다',
-            `${newTopCard.suitEmoji} ${newTopCard.suitLabel}`,
-            `카드 값 ${newTopCard.value.toLocaleString()}으로 합체 완료`,
-            '좋은 흐름이 이어집니다.',
-          ];
-          latestUIState.addFortuneMessages(messageLines);
+        const previousBest = column.cards.reduce((max, card) => Math.max(max, card.value), 0);
+        const progress = useUIStore.getState();
+        const isLocalRecord = newTopCard.value > previousBest;
+        const isGlobalRecord = newTopCard.value > progress.maxFortuneValue;
+
+        if (newTopCard.tier === 3) {
+          if (!progress.hasSeenTier3) {
+            latestUIState.addFortuneMessages([
+              `✨ ${newTopCard.suitEmoji} ${newTopCard.suitLabel}(대운)이 깨어났습니다.`,
+            ]);
+            latestUIState.setFortuneProgress({ hasSeenTier3: true });
+          } else if (newTopCard.value > progress.maxTier3Value) {
+            latestUIState.addFortuneMessages([
+              `🌈 ${newTopCard.suitEmoji} ${newTopCard.suitLabel}(대운)이 운의 정점에 도달했습니다.`,
+            ]);
+            latestUIState.setFortuneProgress({ maxTier3Value: newTopCard.value });
+          } else {
+            latestUIState.addFortuneMessages([
+              `💫 또 다른 ${newTopCard.suitEmoji} ${newTopCard.suitLabel}(대운)이 반응합니다.`,
+            ]);
+          }
+        } else {
+          if (isLocalRecord) {
+            latestUIState.addFortuneMessages([
+              `${newTopCard.suitEmoji} ${newTopCard.suitLabel}(${newTopCard.value}) 운이 발견되었습니다.`,
+            ]);
+          }
+          if (isGlobalRecord) {
+            latestUIState.addFortuneMessages([
+              `${newTopCard.suitEmoji} ${newTopCard.suitLabel}(${newTopCard.value})이 새로운 기록을 세웠습니다.`,
+            ]);
+            latestUIState.setFortuneProgress({ maxFortuneValue: newTopCard.value });
+          }
         }
       }
 
