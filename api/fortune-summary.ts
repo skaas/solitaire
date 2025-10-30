@@ -101,7 +101,7 @@ export default async function handler(request: Request): Promise<Response> {
       body: JSON.stringify({
         model,
         messages: toChatMessages(messages),
-        max_tokens: 600,
+        max_completion_tokens: 600,
       }),
     });
 
