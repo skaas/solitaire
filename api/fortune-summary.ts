@@ -52,9 +52,11 @@ function extractSummary(data: OpenAIResponsesBody): string | null {
   if (Array.isArray(data.output)) {
     const text = data.output
       .flatMap((item) =>
-        item.content
-          .map((part) => part.text?.trim() ?? '')
-          .filter((segment) => segment.length > 0),
+        Array.isArray(item.content)
+          ? item.content
+              .map((part) => part.text?.trim() ?? '')
+              .filter((segment) => segment.length > 0)
+          : [],
       )
       .join('\n')
       .trim();
