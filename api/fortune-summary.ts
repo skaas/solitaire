@@ -7,18 +7,30 @@ interface LLMMessage {
   content: string;
 }
 
-interface OpenAIResponseChoice {
-  message?: { role?: string; content?: string };
+interface OpenAIResponseContentPart {
+  type: string;
+  text?: string;
 }
 
-interface OpenAIChatResponseBody {
-  choices: OpenAIResponseChoice[];
+interface OpenAIResponseItem {
+  role?: string;
+  content: OpenAIResponseContentPart[];
 }
 
-function toChatMessages(messages: LLMMessage[]) {
+interface OpenAIResponsesBody {
+  output_text?: string;
+  output?: OpenAIResponseItem[];
+}
+
+function toResponseInput(messages: LLMMessage[]) {
   return messages.map((message) => ({
     role: message.role,
-    content: message.content,
+    content: [
+      {
+        type: 'input_text' as const,
+        text: message.content,
+      },
+    ],
   }));
 }
 
@@ -32,18 +44,27 @@ function jsonResponse<T>(body: T, init?: ResponseInit) {
   });
 }
 
-function extractSummary(data: OpenAIChatResponseBody): string | null {
-  if (!Array.isArray(data.choices)) {
-    return null;
+function extractSummary(data: OpenAIResponsesBody): string | null {
+  if (typeof data.output_text === 'string' && data.output_text.trim().length > 0) {
+    return data.output_text.trim();
   }
 
-  const text = data.choices
-    .map((choice) => choice.message?.content ?? '')
-    .filter((content) => content && content.trim().length > 0)
-    .join('\n')
-    .trim();
+  if (Array.isArray(data.output)) {
+    const text = data.output
+      .flatMap((item) =>
+        item.content
+          .map((part) => part.text?.trim() ?? '')
+          .filter((segment) => segment.length > 0),
+      )
+      .join('\n')
+      .trim();
 
-  return text.length > 0 ? text : null;
+    if (text.length > 0) {
+      return text;
+    }
+  }
+
+  return null;
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -92,7 +113,7 @@ export default async function handler(request: Request): Promise<Response> {
       messageCount: messages.length,
     });
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,8 +121,8 @@ export default async function handler(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         model,
-        messages: toChatMessages(messages),
-        max_completion_tokens: 600,
+        input: toResponseInput(messages),
+        max_output_tokens: 600,
       }),
     });
 
@@ -122,10 +143,15 @@ export default async function handler(request: Request): Promise<Response> {
       );
     }
 
-    const data = (await response.json()) as OpenAIChatResponseBody;
+    const data = (await response.json()) as OpenAIResponsesBody;
+    console.log('[fortune-summary] OpenAI 응답', {
+      hasOutputText: typeof data.output_text === 'string',
+      outputLength: data.output?.length ?? 0,
+    });
     const summary = extractSummary(data);
 
     if (!summary) {
+      console.error('[fortune-summary] 응답 파싱 실패', data);
       return jsonResponse(
         {
           error: 'OpenAI 응답에서 요약 텍스트를 찾을 수 없습니다.',
