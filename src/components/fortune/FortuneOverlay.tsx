@@ -1,8 +1,12 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { FortuneReport } from '../../types';
+import { createFortuneSummaryMessages } from '../../services/fortuneSummaryPrompt';
+import { requestFortuneSummary } from '../../services/llmClient';
 
 interface FortuneOverlayProps {
   score: number;
   report: FortuneReport;
+  logs: string[];
   onRestart: () => void;
 }
 
@@ -12,7 +16,64 @@ const tierColorMap: Record<number, string> = {
   3: 'bg-yellow-500/30',
 };
 
-const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
+const FortuneOverlay = ({ score, report, logs, onRestart }: FortuneOverlayProps) => {
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [requestKey, setRequestKey] = useState(0);
+
+  const logSignature = useMemo(() => logs.join('||'), [logs]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function run() {
+      try {
+        setIsLoadingSummary(true);
+        setSummary(null);
+        setSummaryError(null);
+
+        const { system, user } = createFortuneSummaryMessages({
+          report,
+          score,
+          logs,
+        });
+
+        const result = await requestFortuneSummary(
+          [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          { signal: controller.signal },
+        );
+
+        setSummary(result);
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
+
+        setSummaryError(
+          error instanceof Error
+            ? error.message
+            : '요약 생성 중 알 수 없는 문제가 발생했습니다.',
+        );
+      } finally {
+        setIsLoadingSummary(false);
+      }
+    }
+
+    run();
+
+    return () => {
+      controller.abort();
+    };
+  }, [report.timestamp, score, logs, logSignature, requestKey]);
+
+  const handleRetry = () => {
+    setRequestKey((prev) => prev + 1);
+  };
+
   return (
     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
       <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-[#3A166A] px-6 py-8 rounded-2xl text-white shadow-2xl border border-purple-400/30">
@@ -31,6 +92,29 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
           <p className="text-lg font-semibold text-yellow-200 mb-1">{report.summaryLabel}</p>
           <p className="text-sm text-white/80 leading-relaxed">{report.summaryDetail}</p>
         </div>
+
+        <section className="mb-6">
+          <h3 className="text-sm font-semibold text-white/80 mb-2">LLM 기반 요약</h3>
+          <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30 text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+            {isLoadingSummary && <p>요약을 생성하는 중입니다...</p>}
+            {!isLoadingSummary && summaryError && (
+              <div className="space-y-2">
+                <p className="text-red-200">요약 생성에 실패했습니다: {summaryError}</p>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="inline-flex items-center gap-1 rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/20"
+                >
+                  다시 시도
+                </button>
+              </div>
+            )}
+            {!isLoadingSummary && !summaryError && summary && <p>{summary}</p>}
+            {!isLoadingSummary && !summaryError && !summary && (
+              <p className="text-white/60">요약 결과가 없습니다.</p>
+            )}
+          </div>
+        </section>
 
         <section className="mb-6">
           <h3 className="text-sm font-semibold text-white/80 mb-2">핵심 카드 흐름</h3>

@@ -165,6 +165,7 @@ const GameBoard = () => {
             <FortuneOverlay
               score={score}
               report={fortuneReport}
+              logs={fortuneMessage}
               onRestart={GameService.resetGame}
             />
           )}
