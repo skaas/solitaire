@@ -114,24 +114,25 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const model = env.OPENAI_MODEL ?? 'gpt-5';
-  const baseUrl = env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1';
 
   try {
     console.log('[fortune-summary] 요청 시작', {
       model,
-      baseUrl,
       messageCount: messages.length,
     });
 
     const client = new OpenAI({
       apiKey,
-      baseURL: baseUrl,
     });
 
     const data = (await client.responses.create({
       model,
       input: toResponseInput(messages),
-      max_output_tokens: 1200,
+      max_output_tokens: 2400,
+      temperature: 0.6,
+      reasoning: {
+        effort: 'low',
+      },
     })) as OpenAIResponsesBody;
     console.log('[fortune-summary] OpenAI 응답', {
       hasOutputText: typeof data.output_text === 'string',
