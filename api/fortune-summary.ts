@@ -128,8 +128,6 @@ export default async function handler(request: Request): Promise<Response> {
     const data = (await client.responses.create({
       model,
       input: toResponseInput(messages),
-      max_output_tokens: 2400,
-      temperature: 0.6,
       reasoning: {
         effort: 'low',
       },
