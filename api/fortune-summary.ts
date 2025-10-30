@@ -131,8 +131,9 @@ export default async function handler(request: Request): Promise<Response> {
         model,
         input: toResponseInput(messages),
         max_output_tokens: 1200,
-        modalities: ['text'],
-        reasoning: { effort: 'medium' },
+        response: {
+          format: { type: 'text' },
+        },
       }),
     });
 
