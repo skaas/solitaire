@@ -7,6 +7,10 @@ interface LLMMessage {
   content: string;
 }
 
+interface OpenAIIncompleteDetails {
+  reason?: string;
+}
+
 interface OpenAIResponseContentPart {
   type: string;
   text?: string;
@@ -20,6 +24,8 @@ interface OpenAIResponseItem {
 interface OpenAIResponsesBody {
   output_text?: string;
   output?: OpenAIResponseItem[];
+  status?: string;
+  incomplete_details?: OpenAIIncompleteDetails | null;
 }
 
 function toResponseInput(messages: LLMMessage[]) {
@@ -124,7 +130,9 @@ export default async function handler(request: Request): Promise<Response> {
       body: JSON.stringify({
         model,
         input: toResponseInput(messages),
-        max_output_tokens: 600,
+        max_output_tokens: 1200,
+        modalities: ['text'],
+        reasoning: { effort: 'medium' },
       }),
     });
 
@@ -149,7 +157,21 @@ export default async function handler(request: Request): Promise<Response> {
     console.log('[fortune-summary] OpenAI 응답', {
       hasOutputText: typeof data.output_text === 'string',
       outputLength: data.output?.length ?? 0,
+      status: data.status,
+      incompleteReason: data.incomplete_details?.reason,
     });
+
+    if (data.status === 'incomplete') {
+      const reason = data.incomplete_details?.reason ?? 'unknown';
+      console.error('[fortune-summary] 응답이 미완료 상태로 종료되었습니다.', reason);
+      return jsonResponse(
+        {
+          error: `OpenAI 응답이 완료되지 않았습니다. (이유: ${reason})`,
+        },
+        { status: 502 },
+      );
+    }
+
     const summary = extractSummary(data);
 
     if (!summary) {
