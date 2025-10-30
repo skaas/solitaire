@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 export const config = {
   runtime: 'edge',
 };
@@ -121,40 +123,16 @@ export default async function handler(request: Request): Promise<Response> {
       messageCount: messages.length,
     });
 
-    const response = await fetch(`${baseUrl}/responses`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        input: toResponseInput(messages),
-        max_output_tokens: 1200,
-        response: {
-          format: { type: 'text' },
-        },
-      }),
+    const client = new OpenAI({
+      apiKey,
+      baseURL: baseUrl,
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('[fortune-summary] OpenAI API 실패', {
-        status: response.status,
-        statusText: response.statusText,
-        bodySnippet: errorBody.slice(0, 500),
-      });
-      return jsonResponse(
-        {
-          error: 'OpenAI API 호출이 실패했습니다.',
-          status: response.status,
-          detail: errorBody,
-        },
-        { status: 502 },
-      );
-    }
-
-    const data = (await response.json()) as OpenAIResponsesBody;
+    const data = (await client.responses.create({
+      model,
+      input: toResponseInput(messages),
+      max_output_tokens: 1200,
+    })) as OpenAIResponsesBody;
     console.log('[fortune-summary] OpenAI 응답', {
       hasOutputText: typeof data.output_text === 'string',
       outputLength: data.output?.length ?? 0,
@@ -187,6 +165,23 @@ export default async function handler(request: Request): Promise<Response> {
 
     return jsonResponse({ summary });
   } catch (error) {
+    if (error instanceof OpenAI.APIError) {
+      console.error('[fortune-summary] OpenAI API 실패', {
+        status: error.status,
+        message: error.message,
+        code: error.code,
+        type: error.type,
+      });
+      return jsonResponse(
+        {
+          error: 'OpenAI API 호출이 실패했습니다.',
+          status: error.status,
+          detail: error.message,
+        },
+        { status: 502 },
+      );
+    }
+
     console.error('[fortune-summary] 요약 생성 중 예외 발생', error);
     return jsonResponse(
       {
