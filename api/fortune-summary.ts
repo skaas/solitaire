@@ -7,25 +7,18 @@ interface LLMMessage {
   content: string;
 }
 
-interface OpenAIResponseChunk {
-  content: Array<{ type: string; text?: string }>;
+interface OpenAIResponseChoice {
+  message?: { role?: string; content?: string };
 }
 
-interface OpenAIResponseBody {
-  output_text?: string;
-  output?: OpenAIResponseChunk[];
-  error?: { message?: string };
+interface OpenAIChatResponseBody {
+  choices: OpenAIResponseChoice[];
 }
 
-function toResponseInput(messages: LLMMessage[]) {
+function toChatMessages(messages: LLMMessage[]) {
   return messages.map((message) => ({
     role: message.role,
-    content: [
-      {
-        type: 'text' as const,
-        text: message.content,
-      },
-    ],
+    content: message.content,
   }));
 }
 
@@ -39,27 +32,18 @@ function jsonResponse<T>(body: T, init?: ResponseInit) {
   });
 }
 
-function extractSummary(data: OpenAIResponseBody): string | null {
-  if (typeof data.output_text === 'string' && data.output_text.trim().length > 0) {
-    return data.output_text.trim();
+function extractSummary(data: OpenAIChatResponseBody): string | null {
+  if (!Array.isArray(data.choices)) {
+    return null;
   }
 
-  if (Array.isArray(data.output)) {
-    const joined = data.output
-      .flatMap((chunk) =>
-        chunk.content
-          .map((part) => ('text' in part && part.text ? part.text : ''))
-          .filter((segment) => segment.trim().length > 0),
-      )
-      .join('\n')
-      .trim();
+  const text = data.choices
+    .map((choice) => choice.message?.content ?? '')
+    .filter((content) => content && content.trim().length > 0)
+    .join('\n')
+    .trim();
 
-    if (joined.length > 0) {
-      return joined;
-    }
-  }
-
-  return null;
+  return text.length > 0 ? text : null;
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -108,7 +92,7 @@ export default async function handler(request: Request): Promise<Response> {
       messageCount: messages.length,
     });
 
-    const response = await fetch(`${baseUrl}/responses`, {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,8 +100,8 @@ export default async function handler(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         model,
-        input: toResponseInput(messages),
-        max_output_tokens: 600,
+        messages: toChatMessages(messages),
+        max_tokens: 600,
       }),
     });
 
@@ -138,7 +122,7 @@ export default async function handler(request: Request): Promise<Response> {
       );
     }
 
-    const data = (await response.json()) as OpenAIResponseBody;
+    const data = (await response.json()) as OpenAIChatResponseBody;
     const summary = extractSummary(data);
 
     if (!summary) {
