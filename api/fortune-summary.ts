@@ -113,7 +113,7 @@ export default async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: '서버 환경 변수 OPENAI_API_KEY가 설정되지 않았습니다.' }, { status: 500 });
   }
 
-  const model = env.OPENAI_MODEL ?? 'gpt-5';
+  const model = env.OPENAI_MODEL ?? 'gpt-5-nano';
 
   try {
     console.log('[fortune-summary] 요청 시작', {
