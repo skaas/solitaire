@@ -84,16 +84,30 @@ export default async function handler(request: Request): Promise<Response> {
     return jsonResponse({ error: 'messages 배열이 필요합니다.' }, { status: 400 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const env = ((globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+    ENV?: Record<string, string | undefined>;
+  }).process?.env ?? (globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+    ENV?: Record<string, string | undefined>;
+  }).ENV ?? {}) as Record<string, string | undefined>;
+
+  const apiKey = env.OPENAI_API_KEY;
 
   if (!apiKey) {
     return jsonResponse({ error: '서버 환경 변수 OPENAI_API_KEY가 설정되지 않았습니다.' }, { status: 500 });
   }
 
-  const model = process.env.OPENAI_MODEL ?? 'gpt-5';
-  const baseUrl = process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1';
+  const model = env.OPENAI_MODEL ?? 'gpt-5';
+  const baseUrl = env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1';
 
   try {
+    console.log('[fortune-summary] 요청 시작', {
+      model,
+      baseUrl,
+      messageCount: messages.length,
+    });
+
     const response = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: {
@@ -109,6 +123,11 @@ export default async function handler(request: Request): Promise<Response> {
 
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error('[fortune-summary] OpenAI API 실패', {
+        status: response.status,
+        statusText: response.statusText,
+        bodySnippet: errorBody.slice(0, 500),
+      });
       return jsonResponse(
         {
           error: 'OpenAI API 호출이 실패했습니다.',
@@ -133,6 +152,7 @@ export default async function handler(request: Request): Promise<Response> {
 
     return jsonResponse({ summary });
   } catch (error) {
+    console.error('[fortune-summary] 요약 생성 중 예외 발생', error);
     return jsonResponse(
       {
         error: '요약 생성 중 서버 오류가 발생했습니다.',
