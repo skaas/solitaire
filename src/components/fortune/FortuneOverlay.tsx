@@ -90,9 +90,9 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
         </div>
 
         <section className="mb-6">
-          <h3 className="text-sm font-semibold text-white/80 mb-2">LLM 기반 요약</h3>
+          <h3 className="text-sm font-semibold text-white/80 mb-2">오늘의 운세</h3>
           <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30 text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-            {isLoadingSummary && <p>요약을 생성하는 중입니다...</p>}
+            {isLoadingSummary && <p>당신의 오늘의 운세를 점치는 중입니다...</p>}
             {!isLoadingSummary && summaryError && (
               <div className="space-y-2">
                 <p className="text-red-200">요약 생성에 실패했습니다: {summaryError}</p>
