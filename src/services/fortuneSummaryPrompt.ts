@@ -2,28 +2,32 @@ import type { FortuneReport, LuckSuitId } from '../types';
 
 const SYSTEM_PROMPT = `너는 데이터 기반 ‘운 흐름’ 분석가다.
 모든 카드는 운의 상태를 데이터처럼 읽어내는 신호로 해석한다.
-숫자는 강도(value), 등급(tier)은 운의 깊이, 문양(suit)은 방향성을 나타낸다.
+숫자(value)는 강도, 등급(tier)은 운의 깊이, 문양(suit)은 방향성을 의미한다.
 
-### 수치 기준:
-128을 기준으로 해석하되, 다음과 같이 구분한다:
-- 128 초과 → ‘확장 구간’ (운이 드러나거나 강화되는 흐름)
-- 128 이하 → ‘시험 구간’ (상황이 정체되거나 시험을 겪는 흐름, 그러나 반드시 부정은 아님)
+128 기준:
+- 128 초과 → 확장 구간(운이 드러나거나 강화)
+- 128 이하 → 시험 구간(조정·정비 단계, 부정 아님)
+“위험/하락” 표현 금지, 대신 “시험/조율” 사용.
 
-‘시험 구간’은 운의 약화가 아니라 **조정, 준비, 재정비의 단계**로 간주한다.
-따라서 “위험/하락” 대신 “시험/조율” 등의 표현을 사용하라.
+등급 의미:
+1단계(일상): 🌿성장 💤정체 🌱시작 🔮변화 🌧️저하
+2단계(상징): ❤️사랑 💰재물 🌕완성 ☀️행복 🔥의지
+3단계(대운): 💖사랑 💎재물 🌞행복 🪞깨달음 🔱결단
 
-### 등급 의미:
-- 1단계(일상의 흐름): 🌿 성장 / 💤 정체 / 🌱 시작 / 🔮 변화 / 🌧️ 저하
-- 2단계(상징적 결실): ❤️ 사랑 / 💰 재물 / 🌕 완성 / ☀️ 행복 / 🔥 의지
-- 3단계(운명의 절정): 💖 사랑 / 💎 재물 / 🌞 행복 / 🪞 깨달음 / 🔱 결단
+분석 원칙:
+1) 중심 흐름: 높은 값(128↑) & 높은 등급(2~3단계)
+2) 보조 흐름: 중간 또는 시험(128↓, 등급 1~2)
+3) 조율 신호: 상반 작용 또는 에너지 변동
 
-### 분석의 원칙:
-1. **중심 흐름:** 높은 값(128↑) & 높은 등급(2~3단계)
-2. **보조 흐름:** 중간 또는 시험 구간(128↓, 등급 1~2)
-3. **조율 신호:** 중심과 보조가 상반될 때 나타나는 긴장 또는 시험
+[출력 규칙]
+- 형식: 오늘의 운세 (문단 1~2개)
+- 길이: 280~320자
+- 톤: 명료·공적·데이터 기반 리포트
+- 감정적 과장/예언 금지(예: 행운이다!, 무조건 좋다!)
+- 숫자, 등급, 문양 기반 근거를 자연스럽게 포함
+- 독자가 이해할 수 있도록 흐름 간의 관계를 설명
 
-추측, 신비주의, 감정 표현 금지.
-명료하고 공적이며 데이터 리포트처럼 작성하라.`;
+이제 아래 입력 데이터 기준으로 오늘의 운세를 작성하라.`;
 
 const SUIT_MEANINGS: Record<LuckSuitId, string> = {
   growth: '🌿 성장',
@@ -50,26 +54,23 @@ interface FortuneSummaryPromptInput {
 }
 
 function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 function formatTopCards(report: FortuneReport): string {
   if (report.topCards.length === 0) {
-    return '- 데이터 없음';
+    return '';
   }
 
   return report.topCards
     .map((card) => {
-      const zone = card.value > 128 ? '확장 구간' : '시험 구간';
-      return `- 문양: ${card.suitLabel} (${SUIT_MEANINGS[card.suitId]}) | 값: ${card.value} | 등급: ${card.tier}단계 | 구간: ${zone}`;
+      return `- ${SUIT_MEANINGS[card.suitId]} | ${card.value} | ${card.tier}단계`;
     })
     .join('\n');
 }
@@ -96,22 +97,16 @@ export function createFortuneSummaryMessages({ report, score, logs }: FortuneSum
   const tier2Count = report.tierCounts[2] ?? 0;
   const tier3Count = report.tierCounts[3] ?? 0;
 
-  const userMessage = `[입력 데이터]
-날짜/시각: ${datetime}
+  const userMessage = `날짜/시각: ${datetime}
+
 최종 점수: ${score}
 
-핵심 카드 흐름:
+카드 목록:
 ${formatTopCards(report)}
 
-등급 분포:
-- 대운(3단계): ${tier3Count}장
-- 상징(2단계): ${tier2Count}장
-- 일상(1단계): ${tier1Count}장
+등급 분포: 대운 ${tier3Count}, 상징 ${tier2Count}, 일상 ${tier1Count}
 
 에너지 변동: ${energyDelta}
-
-로그(최신순):
-${formatLogs(report, logs)}
 
 [출력 포맷]
 제목: 한 줄 요약(20자 이내, 분석적·객관적)
