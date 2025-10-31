@@ -50,7 +50,6 @@ const SUIT_MEANINGS: Record<LuckSuitId, string> = {
 interface FortuneSummaryPromptInput {
   report: FortuneReport;
   score: number;
-  logs: string[];
 }
 
 function formatDate(timestamp: number): string {
@@ -75,22 +74,7 @@ function formatTopCards(report: FortuneReport): string {
     .join('\n');
 }
 
-function formatLogs(report: FortuneReport, logs: string[]): string {
-  if (logs.length === 0) {
-    return '- 기록 없음 | 최근 메시지가 없습니다.';
-  }
-
-  const latestFirst = [...logs].reverse();
-
-  return latestFirst
-    .map((message, index) => {
-      const pseudoTimestamp = formatDate(report.timestamp - index * 60000);
-      return `- ${pseudoTimestamp} | ${message}`;
-    })
-    .join('\n');
-}
-
-export function createFortuneSummaryMessages({ report, score, logs }: FortuneSummaryPromptInput) {
+export function createFortuneSummaryMessages({ report, score }: FortuneSummaryPromptInput) {
   const datetime = formatDate(report.timestamp);
   const energyDelta = report.volatilityScore >= 0 ? `+${report.volatilityScore}` : `${report.volatilityScore}`;
   const tier1Count = report.tierCounts[1] ?? 0;
@@ -106,39 +90,7 @@ ${formatTopCards(report)}
 
 등급 분포: 대운 ${tier3Count}, 상징 ${tier2Count}, 일상 ${tier1Count}
 
-에너지 변동: ${energyDelta}
-
-[출력 포맷]
-제목: 한 줄 요약(20자 이내, 분석적·객관적)
-
-핵심 요약(3줄):
-- 중심 흐름(128↑, 상위 등급):
-- 시험 구간(128↓, 보조 등급):
-- 조율 신호(양자 대비나 에너지 변동 관련):
-
-해석(2~3문단):
-- 중심과 시험 흐름의 상호작용.
-- 등급 분포를 통한 운의 층위 분석.
-- 에너지 변동이 보여주는 조정·확장 가능성.
-
-근거(불릿 3~5개):
-- 카드별 값/등급 기반 데이터 근거만 나열.
-
-권고(3개):
-- 중심 흐름을 유지하거나 시험 흐름을 관리하기 위한 실질적 제안.
-- 금지어: ‘위험’, ‘불운’, ‘경고’. 대신 ‘조율’, ‘정비’, ‘유지’, ‘집중’ 사용.
-
-[추가 규칙]
-- 대운(3단계)이 포함되면 반드시 첫 문단에서 언급.
-- 128 기준 구간을 명시적으로 인용 (예: “128 이하 2장 → 조율 신호로 작용”)
-- 문양 이름은 그대로 사용하되, 내적 의미를 요약해 서술.
-- 길이: 200~300자 내외.
-
-🧮 해석 로직
-
-구간\t명칭\t의미\t예시 표현
-128 초과\t확장 구간\t외부로 확산, 결실, 행동, 전개\t“흐름이 뚜렷하게 상승하고 있습니다.”
-128 이하\t시험 구간\t내부 조정, 일시 정체, 점검\t“조율의 흐름이 작동하며 방향을 확인하는 시기입니다.”`;
+에너지 변동: ${energyDelta}`;
 
   return {
     system: SYSTEM_PROMPT,

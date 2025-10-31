@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FortuneReport } from '../../types';
 import { createFortuneSummaryMessages } from '../../services/fortuneSummaryPrompt';
 import { requestFortuneSummary } from '../../services/llmClient';
@@ -6,7 +6,6 @@ import { requestFortuneSummary } from '../../services/llmClient';
 interface FortuneOverlayProps {
   score: number;
   report: FortuneReport;
-  logs: string[];
   onRestart: () => void;
 }
 
@@ -16,13 +15,11 @@ const tierColorMap: Record<number, string> = {
   3: 'bg-yellow-500/30',
 };
 
-const FortuneOverlay = ({ score, report, logs, onRestart }: FortuneOverlayProps) => {
+const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [requestKey, setRequestKey] = useState(0);
-
-  const logSignature = useMemo(() => logs.join('||'), [logs]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,7 +33,6 @@ const FortuneOverlay = ({ score, report, logs, onRestart }: FortuneOverlayProps)
         const { system, user } = createFortuneSummaryMessages({
           report,
           score,
-          logs,
         });
 
         const result = await requestFortuneSummary(
@@ -68,7 +64,7 @@ const FortuneOverlay = ({ score, report, logs, onRestart }: FortuneOverlayProps)
     return () => {
       controller.abort();
     };
-  }, [report.timestamp, score, logs, logSignature, requestKey]);
+  }, [report.timestamp, score, requestKey]);
 
   const handleRetry = () => {
     setRequestKey((prev) => prev + 1);
