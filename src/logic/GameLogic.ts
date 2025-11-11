@@ -1,6 +1,12 @@
 import type { Card, Column } from '../types';
 import { rollLuckAttributes } from './LuckConfig';
 
+let cardIdCounter = 1;
+
+export function resetCardIdCounter(start = 1): void {
+  cardIdCounter = start;
+}
+
 export function createCardWithLuck(
   value: number,
   options?: {
@@ -19,7 +25,7 @@ export function createCardWithLuck(
   );
 
   return {
-    id: Date.now() + rng(),
+    id: cardIdCounter++,
     value,
     color: getColorForValue(value),
     tier,
@@ -104,12 +110,12 @@ export function calculateCardGenerationRange(columns: Column[], score: number): 
  * @param maxPower - 2^n에서 n의 최대값 (기본값: 4, 즉 2^1~2^4 = 2,4,8,16)
  * @returns 새로 생성된 카드
  */
-export function generateNewCard(maxPower: number = 4): Card {
+export function generateNewCard(maxPower: number = 4, rng: () => number = Math.random): Card {
   // 1부터 maxPower까지의 랜덤 정수
-  const randomPower = Math.floor(Math.random() * maxPower) + 1;
+  const randomPower = Math.floor(rng() * maxPower) + 1;
   const value = Math.pow(2, randomPower);
   
-  return createCardWithLuck(value);
+  return createCardWithLuck(value, { rng });
 }
 
 /**
@@ -117,7 +123,12 @@ export function generateNewCard(maxPower: number = 4): Card {
  * @param column 병합을 체크할 컬럼
  * @returns 병합된 컬럼과 획득한 점수
  */
-export function processChainMerge(cards: Card[]): {
+export function processChainMerge(
+  cards: Card[],
+  options?: {
+    rng?: () => number;
+  },
+): {
   mergedCards: Card[];
   scoreGained: number;
   mergedCardIds: number[];
@@ -129,6 +140,7 @@ export function processChainMerge(cards: Card[]): {
   let newCards = [...cards];
   let scoreGained = 0;
   let mergedCardIds: number[] = [];
+  const rng = options?.rng ?? Math.random;
   
   // 맨 위 카드부터(배열의 끝) 역순으로 한 쌍만 체크
   const lastIndex = newCards.length - 1;
@@ -140,6 +152,7 @@ export function processChainMerge(cards: Card[]): {
 
     const newCard = createCardWithLuck(mergedValue, {
       sourceCards: [newCards[lastIndex], newCards[lastIndex - 1]],
+      rng,
     });
 
     newCards = [...newCards.slice(0, lastIndex - 1), newCard];
@@ -157,7 +170,12 @@ export function processChainMerge(cards: Card[]): {
  * @param column - 병합을 처리할 컬럼
  * @returns 병합된 컬럼과 획득한 점수
  */
-export function processAllMerges(column: Column): { mergedColumn: Column, scoreGained: number } {
+export function processAllMerges(
+  column: Column,
+  options?: {
+    rng?: () => number;
+  },
+): { mergedColumn: Column, scoreGained: number } {
   if (column.cards.length < 2) {
     return { mergedColumn: column, scoreGained: 0 };
   }
@@ -165,6 +183,7 @@ export function processAllMerges(column: Column): { mergedColumn: Column, scoreG
   let cards = [...column.cards];
   let totalScoreGained = 0;
   let hasChangedInLoop;
+  const rng = options?.rng ?? Math.random;
 
   do {
     hasChangedInLoop = false;
@@ -173,7 +192,10 @@ export function processAllMerges(column: Column): { mergedColumn: Column, scoreG
     while (i < cards.length) {
       if (i < cards.length - 1 && cards[i].value === cards[i + 1].value) {
         const newValue = cards[i].value * 2;
-        const mergedCard = createCardWithLuck(newValue, { sourceCards: [cards[i], cards[i + 1]] });
+        const mergedCard = createCardWithLuck(newValue, {
+          sourceCards: [cards[i], cards[i + 1]],
+          rng,
+        });
         newCards.push(mergedCard);
         totalScoreGained += newValue;
         hasChangedInLoop = true;
@@ -196,7 +218,7 @@ export function processAllMerges(column: Column): { mergedColumn: Column, scoreG
  * 정해진 개수로 유한한 카드 덱을 생성하는 함수
  * @returns 생성된 카드 덱
  */
-export function createFiniteDeck(): Card[] {
+export function createFiniteDeck(rng: () => number = Math.random): Card[] {
   const deckConfig = {
     '2': 24,
     '4': 18,
@@ -211,7 +233,7 @@ export function createFiniteDeck(): Card[] {
   for (const [valueStr, count] of Object.entries(deckConfig)) {
     const value = parseInt(valueStr, 10);
     for (let i = 0; i < count; i++) {
-      deck.push(createCardWithLuck(value));
+      deck.push(createCardWithLuck(value, { rng }));
     }
   }
 
@@ -223,13 +245,13 @@ export function createFiniteDeck(): Card[] {
  * @param array 셔플할 배열
  * @returns 셔플된 배열
  */
-export function shuffleDeck(array: Card[]): Card[] {
+export function shuffleDeck(array: Card[], rng: () => number = Math.random): Card[] {
   let currentIndex = array.length, randomIndex;
 
   // While there remain elements to shuffle.
   while (currentIndex !== 0) {
     // Pick a remaining element.
-    randomIndex = Math.floor(Math.random() * currentIndex);
+    randomIndex = Math.floor(rng() * currentIndex);
     currentIndex--;
 
     // And swap it with the current element.
