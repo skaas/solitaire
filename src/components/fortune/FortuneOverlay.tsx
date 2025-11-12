@@ -142,7 +142,13 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
           <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30">
             <h3 className="text-sm font-semibold text-white/80 mb-3">에너지 변동</h3>
             <p className="text-lg font-bold text-yellow-200 mb-1">{report.volatilityScore >= 0 ? `+${report.volatilityScore}` : report.volatilityScore}</p>
-            <p className="text-sm text-white/70">{report.volatility === 'volatile' ? '변화의 파도가 크게 일렁입니다.' : report.volatility === 'mixed' ? '에너지가 다층적으로 교차합니다.' : '흐름이 안정적으로 이어집니다.'}</p>
+            <p className="text-sm text-white/70">
+              {report.volatility === 'volatile'
+                ? '변화의 에너지가 넘칩니다. 흐름을 타고 과감하게 움직여보세요.'
+                : report.volatility === 'mixed'
+                  ? '에너지가 교차합니다. 상황을 읽으며 균형을 잡으면 상승 흐름을 만들 수 있습니다.'
+                  : '에너지가 낮게 깔려 있습니다. 무리한 움직임은 줄이고 내실을 다지는 것이 좋겠습니다.'}
+            </p>
           </div>
         </section>
 
