@@ -74,7 +74,9 @@ export const GameService = {
       return;
     }
 
-    const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards);
+    const { mergedCards, scoreGained, mergedCardIds } = processChainMerge(column.cards, {
+      rng: state.rng,
+    });
 
     if (scoreGained > 0) {
       recordMergeLuck(column.cards, mergedCards);
