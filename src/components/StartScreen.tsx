@@ -27,7 +27,7 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
   return (
     <div className="h-dvh bg-gray-900 flex items-center justify-center p-4">
       {/* 9:16 비율 고정 시작 화면 */}
-      <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#1a1625] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
+      <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#4E1E96] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
         {/* 무한대 아이콘 */}
         <div className="flex justify-center mb-8">
           <svg
@@ -89,7 +89,7 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="이름"
-              className="w-full bg-[#2d2440] border border-purple-800/50 rounded-xl px-12 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-600 transition-colors"
+              className="w-full bg-[#3A166A] border border-purple-500/30 rounded-xl px-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 transition-colors"
             />
           </div>
 
@@ -120,14 +120,14 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
               value={birthdate}
               onChange={(e) => setBirthdate(e.target.value)}
               placeholder="mm/dd/yyyy"
-              className="w-full bg-[#2d2440] border border-purple-800/50 rounded-xl px-12 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-600 transition-colors [color-scheme:dark]"
+              className="w-full bg-[#3A166A] border border-purple-500/30 rounded-xl px-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 transition-colors [color-scheme:dark]"
             />
           </div>
 
           {/* 시작하기 버튼 */}
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-purple-500/50 mt-8"
+            className="w-full bg-gradient-to-r from-yellow-500 to-pink-500 hover:from-yellow-400 hover:to-pink-400 text-gray-900 font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-yellow-500/50 mt-8"
           >
             시작하기
           </button>
