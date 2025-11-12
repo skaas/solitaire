@@ -43,19 +43,25 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
           { signal: controller.signal },
         );
 
-        setSummary(result);
+        if (!controller.signal.aborted) {
+          setSummary(result);
+        }
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           return;
         }
 
-        setSummaryError(
-          error instanceof Error
-            ? error.message
-            : '요약 생성 중 알 수 없는 문제가 발생했습니다.',
-        );
+        if (!controller.signal.aborted) {
+          setSummaryError(
+            error instanceof Error
+              ? error.message
+              : '요약 생성 중 알 수 없는 문제가 발생했습니다.',
+          );
+        }
       } finally {
-        setIsLoadingSummary(false);
+        if (!controller.signal.aborted) {
+          setIsLoadingSummary(false);
+        }
       }
     }
 
@@ -114,17 +120,15 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
 
         <section className="mb-6">
           <h3 className="text-sm font-semibold text-white/80 mb-2">핵심 카드 흐름</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             {report.topCards.map((card) => (
               <div
                 key={card.id}
-                className={`rounded-lg px-3 py-2 border border-white/10 ${tierColorMap[card.tier]}`}
+                className={`rounded-2xl px-4 py-6 shadow-lg flex flex-col items-center justify-center border border-white/10 ${tierColorMap[card.tier]}`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-lg">{card.suitEmoji}</span>
-                  <span className="text-sm font-bold">{card.value}</span>
-                </div>
-                <p className="mt-1 text-xs text-white/70">{card.suitLabel}</p>
+                <span className="text-5xl mb-3">{card.suitEmoji}</span>
+                <p className="text-3xl font-bold text-white mb-2">{card.value}</p>
+                <p className="text-sm text-white/70 font-medium">{card.suitLabel}</p>
               </div>
             ))}
           </div>
