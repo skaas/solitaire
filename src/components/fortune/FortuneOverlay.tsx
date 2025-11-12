@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { FortuneReport } from '../../types';
+import { useEffect, useState, useMemo } from 'react';
+import type { FortuneReport, LuckTier } from '../../types';
 import { createFortuneSummaryMessages } from '../../services/fortuneSummaryPrompt';
 import { requestFortuneSummary } from '../../services/llmClient';
 
@@ -9,7 +9,7 @@ interface FortuneOverlayProps {
   onRestart: () => void;
 }
 
-const tierColorMap: Record<number, string> = {
+const tierColorMap: Record<LuckTier, string> = {
   1: 'bg-white/10',
   2: 'bg-pink-500/20',
   3: 'bg-yellow-500/30',
@@ -45,7 +45,8 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
 
         setSummary(result);
       } catch (error) {
-        if ((error as Error).name === 'AbortError') {
+        // AbortError는 사용자가 취소한 경우이므로 에러로 표시하지 않음
+        if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
 
@@ -70,13 +71,71 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
     setRequestKey((prev) => prev + 1);
   };
 
+  // 날짜 포맷팅을 메모이제이션하여 불필요한 재계산 방지
+  const formattedTimestamp = useMemo(
+    () => new Date(report.timestamp).toLocaleString('ko-KR'),
+    [report.timestamp],
+  );
+
+  // 에너지 변동 메시지를 메모이제이션
+  const volatilityMessage = useMemo(() => {
+    switch (report.volatility) {
+      case 'volatile':
+        return '변화의 파도가 크게 일렁입니다.';
+      case 'mixed':
+        return '에너지가 다층적으로 교차합니다.';
+      case 'stable':
+        return '흐름이 안정적으로 이어집니다.';
+      default:
+        return '흐름이 안정적으로 이어집니다.';
+    }
+  }, [report.volatility]);
+
+  // 요약 섹션 렌더링 로직을 단순화
+  const renderSummaryContent = () => {
+    if (isLoadingSummary) {
+      return <p>당신의 오늘의 운세를 점치는 중입니다...</p>;
+    }
+
+    if (summaryError) {
+      return (
+        <div className="space-y-2">
+          <p className="text-red-200">요약 생성에 실패했습니다: {summaryError}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="inline-flex items-center gap-1 rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-purple-900"
+            aria-label="요약 다시 시도"
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+
+    if (summary) {
+      return <p>{summary}</p>;
+    }
+
+    return <p className="text-white/60">요약 결과가 없습니다.</p>;
+  };
+
   return (
-    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+    <div
+      className="absolute inset-0 bg-black/90 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fortune-title"
+    >
       <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-[#3A166A] px-6 py-8 rounded-2xl text-white shadow-2xl border border-purple-400/30">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-yellow-200">오늘의 운세</h2>
-            <p className="text-xs text-white/60">{new Date(report.timestamp).toLocaleString()}</p>
+            <h2 id="fortune-title" className="text-2xl font-bold text-yellow-200">
+              오늘의 운세
+            </h2>
+            <p className="text-xs text-white/60" aria-label="운세 생성 시간">
+              {formattedTimestamp}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-sm text-white/70">최종 점수</p>
@@ -92,23 +151,7 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
         <section className="mb-6">
           <h3 className="text-sm font-semibold text-white/80 mb-2">오늘의 운세</h3>
           <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30 text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-            {isLoadingSummary && <p>당신의 오늘의 운세를 점치는 중입니다...</p>}
-            {!isLoadingSummary && summaryError && (
-              <div className="space-y-2">
-                <p className="text-red-200">요약 생성에 실패했습니다: {summaryError}</p>
-                <button
-                  type="button"
-                  onClick={handleRetry}
-                  className="inline-flex items-center gap-1 rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/20"
-                >
-                  다시 시도
-                </button>
-              </div>
-            )}
-            {!isLoadingSummary && !summaryError && summary && <p>{summary}</p>}
-            {!isLoadingSummary && !summaryError && !summary && (
-              <p className="text-white/60">요약 결과가 없습니다.</p>
-            )}
+            {renderSummaryContent()}
           </div>
         </section>
 
@@ -118,7 +161,7 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
             {report.topCards.map((card) => (
               <div
                 key={card.id}
-                className={`rounded-lg px-3 py-2 border border-white/10 ${tierColorMap[card.tier]}`}
+                className={`rounded-lg px-3 py-2 border border-white/10 ${tierColorMap[card.tier] ?? tierColorMap[1]}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-lg">{card.suitEmoji}</span>
@@ -134,15 +177,26 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
           <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30">
             <h3 className="text-sm font-semibold text-white/80 mb-3">등급 분포</h3>
             <ul className="space-y-2 text-sm font-medium">
-              <li className="flex justify-between"><span>대운 (3단계)</span><span>{report.tierCounts[3]}장</span></li>
-              <li className="flex justify-between"><span>상징 (2단계)</span><span>{report.tierCounts[2]}장</span></li>
-              <li className="flex justify-between"><span>일상 (1단계)</span><span>{report.tierCounts[1]}장</span></li>
+              <li className="flex justify-between">
+                <span>대운 (3단계)</span>
+                <span>{report.tierCounts[3] ?? 0}장</span>
+              </li>
+              <li className="flex justify-between">
+                <span>상징 (2단계)</span>
+                <span>{report.tierCounts[2] ?? 0}장</span>
+              </li>
+              <li className="flex justify-between">
+                <span>일상 (1단계)</span>
+                <span>{report.tierCounts[1] ?? 0}장</span>
+              </li>
             </ul>
           </div>
           <div className="bg-purple-900/40 p-4 rounded-xl border border-purple-500/30">
             <h3 className="text-sm font-semibold text-white/80 mb-3">에너지 변동</h3>
-            <p className="text-lg font-bold text-yellow-200 mb-1">{report.volatilityScore >= 0 ? `+${report.volatilityScore}` : report.volatilityScore}</p>
-            <p className="text-sm text-white/70">{report.volatility === 'volatile' ? '변화의 파도가 크게 일렁입니다.' : report.volatility === 'mixed' ? '에너지가 다층적으로 교차합니다.' : '흐름이 안정적으로 이어집니다.'}</p>
+            <p className="text-lg font-bold text-yellow-200 mb-1">
+              {report.volatilityScore >= 0 ? `+${report.volatilityScore}` : report.volatilityScore}
+            </p>
+            <p className="text-sm text-white/70">{volatilityMessage}</p>
           </div>
         </section>
 
@@ -164,7 +218,10 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
         <section className="space-y-3 mb-6">
           <h3 className="text-sm font-semibold text-white/80">Narrative</h3>
           {report.narrativeLines.map((line, index) => (
-            <p key={index} className="text-sm text-white/80 leading-relaxed bg-purple-900/30 border border-purple-500/30 rounded-lg px-4 py-3">
+            <p
+              key={`narrative-${index}`}
+              className="text-sm text-white/80 leading-relaxed bg-purple-900/30 border border-purple-500/30 rounded-lg px-4 py-3"
+            >
               {line}
             </p>
           ))}
@@ -172,8 +229,10 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
 
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={onRestart}
-            className="bg-gradient-to-r from-yellow-500 to-pink-500 text-gray-900 font-bold px-6 py-2 rounded-lg shadow-lg hover:from-yellow-400 hover:to-pink-400 transition-colors"
+            className="bg-gradient-to-r from-yellow-500 to-pink-500 text-gray-900 font-bold px-6 py-2 rounded-lg shadow-lg hover:from-yellow-400 hover:to-pink-400 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-purple-900"
+            aria-label="새로운 게임 시작"
           >
             운을 다시 시험하기
           </button>
