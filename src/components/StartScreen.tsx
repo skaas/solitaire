@@ -25,8 +25,9 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1625] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="h-dvh bg-gray-900 flex items-center justify-center p-4">
+      {/* 9:16 비율 고정 시작 화면 */}
+      <div className="w-full max-w-md h-dvh max-h-dvh aspect-[9/16] bg-[#1a1625] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
         {/* 무한대 아이콘 */}
         <div className="flex justify-center mb-8">
           <svg
@@ -56,13 +57,13 @@ const StartScreen = ({ onStart }: StartScreenProps) => {
         </h1>
 
         {/* 부제목 */}
-        <p className="text-gray-400 text-center mb-12 px-4 leading-relaxed">
+        <p className="text-gray-400 text-center mb-8 px-4 leading-relaxed text-sm">
           당신의 이름과 생년월일을 입력하여<br />
           미래의 실마리를 찾아보세요.
         </p>
 
         {/* 폼 */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 w-full">
           {/* 이름 입력 */}
           <div className="relative">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
