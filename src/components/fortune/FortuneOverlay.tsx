@@ -76,6 +76,21 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
     setRequestKey((prev) => prev + 1);
   };
 
+  // LLM summary에서 제목과 본문 분리
+  const parseSummary = (text: string | null) => {
+    if (!text) return { title: null, body: null };
+    
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return { title: null, body: null };
+    
+    const title = lines[0].trim();
+    const body = lines.slice(1).join('\n').trim();
+    
+    return { title, body };
+  };
+
+  const { title: summaryTitle, body: summaryBody } = parseSummary(summary);
+
   return (
     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
       <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-[#3A166A] px-6 py-8 rounded-2xl text-white shadow-2xl border border-purple-400/30">
@@ -92,7 +107,15 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
 
         <div className="bg-purple-900/60 border border-purple-500/50 rounded-xl p-4 mb-6">
           <p className="text-lg font-semibold text-yellow-200 mb-1">{report.summaryLabel}</p>
-          <p className="text-sm text-white/80 leading-relaxed">{report.summaryDetail}</p>
+          {isLoadingSummary && (
+            <p className="text-sm text-white/80 leading-relaxed">운세를 해석하는 중...</p>
+          )}
+          {!isLoadingSummary && summaryTitle && (
+            <p className="text-sm text-white/80 leading-relaxed">{summaryTitle}</p>
+          )}
+          {!isLoadingSummary && !summaryTitle && (
+            <p className="text-sm text-white/80 leading-relaxed">{report.summaryDetail}</p>
+          )}
         </div>
 
         <section className="mb-6">
@@ -111,8 +134,8 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
                 </button>
               </div>
             )}
-            {!isLoadingSummary && !summaryError && summary && <p>{summary}</p>}
-            {!isLoadingSummary && !summaryError && !summary && (
+            {!isLoadingSummary && !summaryError && summaryBody && <p>{summaryBody}</p>}
+            {!isLoadingSummary && !summaryError && !summaryBody && (
               <p className="text-white/60">요약 결과가 없습니다.</p>
             )}
           </div>
