@@ -8,7 +8,12 @@ import FortuneOverlay from './fortune/FortuneOverlay';
 import { DndContainer } from './dnd/DndContainer';
 import type { DragEndEvent } from '@dnd-kit/core';
 
-const GameBoard = () => {
+interface GameBoardProps {
+  userInfo: { name: string; birthdate: string };
+  onRestart: () => void;
+}
+
+const GameBoard = ({ userInfo, onRestart }: GameBoardProps) => {
   const {
     score,
     time,
@@ -31,6 +36,23 @@ const GameBoard = () => {
     () => animationFinished && isGameOver,
     [animationFinished, isGameOver],
   );
+
+  // userInfo로부터 salt 생성 (이름-YYYY-MM-DD 형식)
+  const salt = useMemo(() => {
+    const date = new Date(userInfo.birthdate);
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${userInfo.name}-${year}-${month}-${day}`;
+  }, [userInfo]);
+
+  // 컴포넌트 마운트 시 salt로 게임 초기화
+  useEffect(() => {
+    useGameStore.getState().resetState(salt);
+    useUIStore.getState().resetGameOver();
+    useUIStore.getState().clearAnimatingCards();
+    useUIStore.getState().setAnimating(false);
+  }, [salt]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -165,7 +187,7 @@ const GameBoard = () => {
             <FortuneOverlay
               score={score}
               report={fortuneReport}
-              onRestart={GameService.resetGame}
+              onRestart={onRestart}
             />
           )}
         </div>

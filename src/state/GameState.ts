@@ -4,6 +4,7 @@ import type { Card, Column } from '../types';
 import { createFiniteDeck, shuffleDeck, processAllMerges, createCardWithLuck } from '../logic/GameLogic';
 import type { GameOverEvaluation } from './types';
 import { clearMergeHistory } from '../logic/LuckTracker';
+import { createSeededRandom, getDailySeed } from '../utils/random';
 
 // GameState의 스냅샷 타입
 interface GameState {
@@ -12,6 +13,8 @@ interface GameState {
   columns: Column[];
   queue: Card[];
   deck: Card[];
+  seed: string;
+  rng: () => number;
   higherTierCardsAdded: boolean; // '32', '64' 카드 추가 여부 추적
   canPlaceCard: (card: Card, column: Column) => boolean;
   setColumns(columns: Column[]): void;
@@ -19,7 +22,7 @@ interface GameState {
   setDeck(deck: Card[]): void;
   addScore(points: number): void;
   setScore(score: number): void;
-  resetState(): void;
+  resetState(salt?: string): void;
   setHigherTierCardsAdded(value: boolean): void;
   setTime(time: number): void;
   incrementTime(): void;
@@ -28,9 +31,11 @@ interface GameState {
 }
 
 // 게임 초기화 함수
-const initializeGame = () => {
+const initializeGame = (salt?: string) => {
   clearMergeHistory();
-  const newDeck = shuffleDeck(createFiniteDeck());
+  const seed = getDailySeed(new Date(), salt || '');
+  const rng = createSeededRandom(seed);
+  const newDeck = shuffleDeck(createFiniteDeck(rng), rng);
   let initialScore = 0;
 
   const initialColumns: Column[] = [{ id: 1, cards: [] }, { id: 2, cards: [] }, { id: 3, cards: [] }, { id: 4, cards: [] }];
@@ -50,16 +55,16 @@ const initializeGame = () => {
     col.cards.sort((a, b) => b.value - a.value);
     
     // 자동 병합 처리
-    const { mergedColumn, scoreGained } = processAllMerges(col);
+    const { mergedColumn, scoreGained } = processAllMerges(col, { rng });
     initialColumns[index] = mergedColumn;
     initialScore += scoreGained;
   });
 
   // 큐에 '2' 카드 3장 배치
   const initialQueue: Card[] = [
-    createCardWithLuck(2),
-    createCardWithLuck(2),
-    createCardWithLuck(2),
+    createCardWithLuck(2, { rng }),
+    createCardWithLuck(2, { rng }),
+    createCardWithLuck(2, { rng }),
   ];
 
   // 덱에서 '2' 카드 3장 제거
@@ -76,6 +81,8 @@ const initializeGame = () => {
     deck: newDeck,
     score: initialScore, // 초기 점수 반영
     time: 0,
+    seed,
+    rng,
     higherTierCardsAdded: false,
   };
 };
@@ -147,7 +154,7 @@ export const useGameStore = create<GameState>()(
     setScore: (score) => set((state) => {
       state.score = score;
     }),
-    resetState: () => set(() => initializeGame()),
+    resetState: (salt?: string) => set(() => initializeGame(salt)),
     setHigherTierCardsAdded: (value) => set((state) => {
       state.higherTierCardsAdded = value;
     }),
@@ -159,7 +166,7 @@ export const useGameStore = create<GameState>()(
     }),
 
     unlockHigherTierCards: () => {
-      const { columns, deck, higherTierCardsAdded } = get();
+      const { columns, deck, rng, higherTierCardsAdded } = get();
       if (higherTierCardsAdded) return;
 
       const hasSixtyFourOrMore = columns.some(col => 
@@ -170,14 +177,14 @@ export const useGameStore = create<GameState>()(
         const newCards: Card[] = [];
         // '32' 카드 18장 추가
         for (let i = 0; i < 18; i++) {
-          newCards.push(createCardWithLuck(32));
+          newCards.push(createCardWithLuck(32, { rng }));
         }
         // '64' 카드 4장 추가
         for (let i = 0; i < 4; i++) {
-          newCards.push(createCardWithLuck(64));
+          newCards.push(createCardWithLuck(64, { rng }));
         }
         
-        const newDeck = shuffleDeck([...deck, ...newCards]);
+        const newDeck = shuffleDeck([...deck, ...newCards], rng);
         set((state) => {
           state.deck = newDeck;
           state.higherTierCardsAdded = true;
