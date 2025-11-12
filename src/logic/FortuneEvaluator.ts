@@ -43,12 +43,12 @@ function calculateSuitHighlights(cards: Card[]): FortuneHighlight[] {
 }
 
 function computeVolatility(tierCounts: Record<LuckTier, number>): { score: number; level: FortuneVolatility } {
-  const score = tierCounts[3] * 2 + tierCounts[2] - tierCounts[1];
+  const score = tierCounts[3] * 3 + tierCounts[2] * 2 - tierCounts[1];
 
-  if (score <= 0) {
+  if (score <= -2) {
     return { score, level: 'stable' };
   }
-  if (score <= 3) {
+  if (score <= 4) {
     return { score, level: 'mixed' };
   }
   return { score, level: 'volatile' };
@@ -74,7 +74,7 @@ function deriveSummaryLabel(tierCounts: Record<LuckTier, number>, highestCard: C
   return '일상 에너지 순환';
 }
 
-function buildNarrativeLines(highlights: FortuneHighlight[], volatility: FortuneVolatility): string[] {
+function buildNarrativeLines(highlights: FortuneHighlight[], volatility: FortuneVolatility, volatilityScore: number): string[] {
   const lines = highlights.map((highlight) => {
     const tier = LUCK_SUIT_CATALOG[highlight.suitId].tier;
     const narrative = getSuitNarrative(highlight.suitId, tier);
@@ -82,9 +82,15 @@ function buildNarrativeLines(highlights: FortuneHighlight[], volatility: Fortune
   });
 
   if (volatility === 'volatile') {
-    lines.push('⚡ 운의 기복이 큽니다. 급변하는 흐름에 대비하세요.');
+    lines.push('⚡ 변화의 에너지가 넘칩니다. 새로운 기회를 적극적으로 잡아보세요.');
   } else if (volatility === 'stable') {
-    lines.push('🌙 흐름이 차분합니다. 꾸준함이 핵심이 됩니다.');
+    lines.push('🌙 에너지가 낮아 안정적이지만, 무리한 추진보다는 차분한 조율이 필요합니다.');
+  } else {
+    lines.push('🌊 에너지가 교차합니다. 흐름을 읽으며 균형을 유지하면 좋은 결과로 이어집니다.');
+  }
+
+  if (volatilityScore < 0) {
+    lines.push('🪻 기운이 살짝 낮아져 있습니다. 과도한 움직임보다는 기반을 다져보세요.');
   }
 
   return lines;
@@ -103,7 +109,7 @@ export function evaluateFortune(columns: Column[], queue: Card[]): FortuneReport
   const summaryDetail = highestCard
     ? getSuitNarrative(highestCard.suitId, highestCard.tier)
     : '운세 요약을 생성할 수 없습니다.';
-  const narrativeLines = buildNarrativeLines(highlights, volatility);
+  const narrativeLines = buildNarrativeLines(highlights, volatility, volatilityScore);
 
   return {
     topCards: allCards.slice(0, 6),

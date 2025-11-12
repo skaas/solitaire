@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FortuneReport, LuckTier } from '../../types';
 import { createFortuneSummaryMessages } from '../../services/fortuneSummaryPrompt';
 import { requestFortuneSummary } from '../../services/llmClient';
@@ -47,7 +47,6 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
           setSummary(result);
         }
       } catch (error) {
-        // AbortError는 사용자가 취소한 경우이므로 에러로 표시하지 않음
         if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
@@ -77,27 +76,24 @@ const FortuneOverlay = ({ score, report, onRestart }: FortuneOverlayProps) => {
     setRequestKey((prev) => prev + 1);
   };
 
-  // 날짜 포맷팅을 메모이제이션하여 불필요한 재계산 방지
   const formattedTimestamp = useMemo(
     () => new Date(report.timestamp).toLocaleString('ko-KR'),
     [report.timestamp],
   );
 
-  // 에너지 변동 메시지를 메모이제이션
   const volatilityMessage = useMemo(() => {
     switch (report.volatility) {
       case 'volatile':
-        return '변화의 파도가 크게 일렁입니다.';
+        return '변화의 에너지가 넘칩니다. 흐름을 타고 과감하게 움직여보세요.';
       case 'mixed':
-        return '에너지가 다층적으로 교차합니다.';
+        return '에너지가 교차합니다. 상황을 읽으며 균형을 잡으면 상승 흐름을 만들 수 있습니다.';
       case 'stable':
-        return '흐름이 안정적으로 이어집니다.';
+        return '에너지가 낮게 깔려 있습니다. 무리한 움직임은 줄이고 내실을 다지는 것이 좋겠습니다.';
       default:
-        return '흐름이 안정적으로 이어집니다.';
+        return '에너지가 낮게 깔려 있습니다. 무리한 움직임은 줄이고 내실을 다지는 것이 좋겠습니다.';
     }
   }, [report.volatility]);
 
-  // 요약 섹션 렌더링 로직을 단순화
   const renderSummaryContent = () => {
     if (isLoadingSummary) {
       return <p>당신의 오늘의 운세를 점치는 중입니다...</p>;
