@@ -1,13 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Card, Column } from '../types';
-import {
-  createFiniteDeck,
-  shuffleDeck,
-  processAllMerges,
-  createCardWithLuck,
-  resetCardIdCounter,
-} from '../logic/GameLogic';
+import { createFiniteDeck, shuffleDeck, processAllMerges, createCardWithLuck } from '../logic/GameLogic';
 import type { GameOverEvaluation } from './types';
 import { clearMergeHistory } from '../logic/LuckTracker';
 import { createSeededRandom, getDailySeed } from '../utils/random';
@@ -28,7 +22,7 @@ interface GameState {
   setDeck(deck: Card[]): void;
   addScore(points: number): void;
   setScore(score: number): void;
-  resetState(): void;
+  resetState(salt?: string): void;
   setHigherTierCardsAdded(value: boolean): void;
   setTime(time: number): void;
   incrementTime(): void;
@@ -37,12 +31,11 @@ interface GameState {
 }
 
 // 게임 초기화 함수
-const initializeGame = () => {
+const initializeGame = (salt?: string) => {
   clearMergeHistory();
-  const seed = getDailySeed();
+  const seed = getDailySeed(new Date(), salt || '');
   const rng = createSeededRandom(seed);
-  resetCardIdCounter();
-  const deck = shuffleDeck(createFiniteDeck(rng), rng);
+  const newDeck = shuffleDeck(createFiniteDeck(rng), rng);
   let initialScore = 0;
 
   const initialColumns: Column[] = [{ id: 1, cards: [] }, { id: 2, cards: [] }, { id: 3, cards: [] }, { id: 4, cards: [] }];
@@ -50,7 +43,7 @@ const initializeGame = () => {
   // 각 컬럼에 2장씩 카드 분배
   for (let i = 0; i < 2; i++) {
     for (let j = 0; j < 4; j++) {
-      const card = deck.pop();
+      const card = newDeck.pop();
       if (card) {
         initialColumns[j].cards.push(card);
       }
@@ -76,16 +69,16 @@ const initializeGame = () => {
 
   // 덱에서 '2' 카드 3장 제거
   for (let i = 0; i < 3; i++) {
-    const cardIndex = deck.findIndex(card => card.value === 2);
+    const cardIndex = newDeck.findIndex(card => card.value === 2);
     if (cardIndex !== -1) {
-      deck.splice(cardIndex, 1);
+      newDeck.splice(cardIndex, 1);
     }
   }
 
   return {
     columns: initialColumns,
     queue: initialQueue,
-    deck,
+    deck: newDeck,
     score: initialScore, // 초기 점수 반영
     time: 0,
     seed,
@@ -161,7 +154,7 @@ export const useGameStore = create<GameState>()(
     setScore: (score) => set((state) => {
       state.score = score;
     }),
-    resetState: () => set(() => initializeGame()),
+    resetState: (salt?: string) => set(() => initializeGame(salt)),
     setHigherTierCardsAdded: (value) => set((state) => {
       state.higherTierCardsAdded = value;
     }),
@@ -173,7 +166,7 @@ export const useGameStore = create<GameState>()(
     }),
 
     unlockHigherTierCards: () => {
-      const { columns, deck, higherTierCardsAdded, rng } = get();
+      const { columns, deck, rng, higherTierCardsAdded } = get();
       if (higherTierCardsAdded) return;
 
       const hasSixtyFourOrMore = columns.some(col => 
