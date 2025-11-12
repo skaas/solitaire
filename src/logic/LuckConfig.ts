@@ -45,15 +45,15 @@ type EvolutionProbabilities = {
 export const LUCK_EVOLUTION_TABLE: Record<number, EvolutionProbabilities> = {
   2: { tier1: 1, tier2: 0, tier3: 0 },
   4: { tier1: 1, tier2: 0, tier3: 0 },
-  8: { tier1: 0.8, tier2: 0.2, tier3: 0 },
-  16: { tier1: 0.5, tier2: 0.45, tier3: 0.01 },
-  32: { tier1: 0.42, tier2: 0.55, tier3: 0.03 },
-  64: { tier1: 0.37, tier2: 0.6, tier3: 0.03 },
-  128: { tier1: 0.37, tier2: 0.6, tier3: 0.03 },
-  256: { tier1: 0.05, tier2: 0.7, tier3: 0.25 },
-  512: { tier1: 0, tier2: 0.7, tier3: 0.3 },
-  1024: { tier1: 0, tier2: 0.5, tier3: 0.5 },
-  2048: { tier1: 0, tier2: 0.2, tier3: 0.8 },
+  8: { tier1: 1, tier2: 0, tier3: 0 },
+  16: { tier1: 0.9, tier2: 0.1, tier3: 0 },
+  32: { tier1: 0.9, tier2: 0.1, tier3: 0 },
+  64: { tier1: 0.9, tier2: 0.1, tier3: 0 },
+  128: { tier1: 0.85, tier2: 0.1, tier3: 0.05 },
+  256: { tier1: 0.8, tier2: 0.15, tier3: 0.05 },
+  512: { tier1: 0.7, tier2: 0.2, tier3: 0.1 },
+  1024: { tier1: 0.3, tier2: 0.4, tier3: 0.3 },
+  2048: { tier1: 0, tier2: 0.5, tier3: 0.5 },
 };
 
 export const LUCK_SUIT_NARRATIVE: Record< LuckSuitId, { tier1: string; tier2: string; tier3: string } > = {
